@@ -25,5 +25,10 @@ logs/
 .DS_Store
 Thumbs.db
 
-# NB: storage/jobs.db NON è ignorato di proposito:
-# viene committato dal workflow GitHub Actions per persistere la dedup.
+# Piattaforma web: DB locale su volume — MAI committare (contiene token utenti)
+data/
+*.sqlite
+*.sqlite3
+app.db
+
+# NB storage/jobs.db (agente single-user legacy) resta nel repo per compatibilità.

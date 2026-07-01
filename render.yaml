@@ -1,0 +1,43 @@
+# render.yaml — Blueprint per deployare la piattaforma web su Render (free tier).
+# Deploy: Render Dashboard → New → Blueprint → seleziona questo repo.
+# I valori con sync:false vanno inseriti a mano nella dashboard (sono segreti).
+services:
+  - type: web
+    name: job-hunter-platform
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements-web.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /healthz
+    envVars:
+      # --- Database (Neon/Supabase, tier free). Formato psycopg v3:
+      #   postgresql+psycopg://USER:PASS@HOST/DB?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      # --- Segreti applicativi (inseriscili a mano) ---
+      - key: MASTER_KEY            # python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: RUN_CYCLE_TOKEN       # stesso valore nel secret GitHub RUN_CYCLE_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      # --- Google OAuth CONDIVISO (client tipo "Web application") ---
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # --- Telegram (bot condiviso) ---
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      # --- Gemini (condiviso) ---
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-lite
+      # --- URL pubblico: impostalo DOPO il primo deploy con l'URL Render ---
+      - key: PUBLIC_BASE_URL
+        sync: false

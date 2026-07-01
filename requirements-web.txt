@@ -1,0 +1,23 @@
+# requirements-web.txt — dipendenze della PIATTAFORMA WEB (senza Playwright).
+# Lo scraping career page è fuori scope: niente Playwright qui → build più veloce.
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+jinja2>=3.1.4
+python-multipart>=0.0.12
+itsdangerous>=2.2.0
+SQLAlchemy>=2.0.36
+psycopg[binary]>=3.2.3
+bcrypt>=4.2.0
+cryptography>=43.0.0
+
+python-dotenv>=1.0.1
+requests>=2.32.3
+beautifulsoup4>=4.12.3
+lxml>=5.3.0
+
+google-auth>=2.35.0
+google-auth-oauthlib>=1.2.1
+google-api-python-client>=2.149.0
+google-genai>=1.20.0
+
+PyYAML>=6.0.2

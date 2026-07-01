@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Accedi · Job Hunter{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Accedi</h1>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form action="/login" method="post">
+    <label>Email</label>
+    <input type="email" name="email" required autocomplete="email">
+    <label>Password</label>
+    <input type="password" name="password" required autocomplete="current-password">
+    <div style="margin-top:16px" class="row">
+      <button type="submit">Entra</button>
+      <a href="/register" class="muted">Crea un account</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

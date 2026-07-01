@@ -1,0 +1,34 @@
+{# Frammento riusabile: form dei criteri. `action` passato dal chiamante. #}
+<form action="{{ action }}" method="post">
+  <div class="grid2">
+    <div>
+      <label>Località (separate da virgola)</label>
+      <input name="location_filter" value="{{ criteria.location_filter if criteria else '' }}" placeholder="Lisbon, Lisboa, Portugal">
+    </div>
+    <div>
+      <label>Lingue accettate</label>
+      <input name="lingua_pref" value="{{ criteria.lingua_pref if criteria else '' }}" placeholder="Italiano, Inglese">
+    </div>
+    <div>
+      <label>Tipo di contratto</label>
+      <input name="contratto_pref" value="{{ criteria.contratto_pref if criteria else '' }}" placeholder="stage, internship, junior">
+    </div>
+    <div>
+      <label>Skill / keyword (separate da virgola)</label>
+      <input name="skills_keywords" value="{{ criteria.skills_keywords if criteria else '' }}" placeholder="python, sql, crm, marketing">
+    </div>
+    <div>
+      <label>Retribuzione minima (EUR/mese, 0 = indifferente)</label>
+      <input type="number" name="salario_minimo" min="0" value="{{ criteria.salario_minimo if criteria else 0 }}">
+    </div>
+    <div>
+      <label>Durata minima (mesi, 0 = indifferente)</label>
+      <input type="number" name="durata_minima" min="0" value="{{ criteria.durata_minima if criteria else 0 }}">
+    </div>
+    <div>
+      <label>Soglia notifica (0-100)</label>
+      <input type="number" name="soglia_notifica" min="0" max="100" value="{{ criteria.soglia_notifica if criteria else 55 }}">
+    </div>
+  </div>
+  <div style="margin-top:16px"><button type="submit">Salva criteri</button></div>
+</form>

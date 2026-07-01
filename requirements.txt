@@ -1,17 +1,29 @@
-# --- Core ---
+# ====================== Piattaforma web multi-utente ======================
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+jinja2>=3.1.4
+python-multipart>=0.0.12
+itsdangerous>=2.2.0
+SQLAlchemy>=2.0.36
+psycopg[binary]>=3.2.3          # driver Postgres (produzione)
+bcrypt>=4.2.0                   # hashing password
+cryptography>=43.0.0            # Fernet per cifratura token at-rest
+
+# ---------------------------- Core condiviso ------------------------------
 python-dotenv>=1.0.1
 PyYAML>=6.0.2
 requests>=2.32.3
 beautifulsoup4>=4.12.3
 lxml>=5.3.0
 
-# --- Gmail API (OAuth2, CI-friendly via refresh token) ---
+# ------------------- Gmail API (OAuth condiviso piattaforma) --------------
 google-auth>=2.35.0
 google-auth-oauthlib>=1.2.1
 google-api-python-client>=2.149.0
 
-# --- Gemini (free tier) ---
+# ----------------------------- Gemini (free) ------------------------------
 google-genai>=1.20.0
 
-# --- Scraping JS-heavy career pages (free, headless) ---
+# --------- Scraping career page: FUORI SCOPE ora, dipendenza tenuta -------
+# (companies.yaml e sources/company_scraper.py restano nel repo, inutilizzati)
 playwright>=1.48.0

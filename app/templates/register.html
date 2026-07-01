@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Registrati · Job Hunter{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>Crea il tuo account</h1>
+  <p class="muted">Ricevi su Telegram solo le offerte in target coi tuoi criteri.</p>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form action="/register" method="post">
+    <label>Email</label>
+    <input type="email" name="email" required autocomplete="email">
+    <label>Password (min 8 caratteri)</label>
+    <input type="password" name="password" required minlength="8" autocomplete="new-password">
+    <div style="margin-top:16px" class="row">
+      <button type="submit">Registrati</button>
+      <a href="/login" class="muted">Ho già un account</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

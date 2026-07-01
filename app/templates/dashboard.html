@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Job Hunter{% endblock %}
+{% block body %}
+<h1>Dashboard</h1>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <div>Stato agente:
+        {% if user.is_active %}<span class="ok">● Attivo</span>{% else %}<span class="pending">● In pausa</span>{% endif %}
+      </div>
+      <div class="row" style="margin-top:8px">
+        <span class="pill">Google: {% if google_connected %}✅{% else %}❌{% endif %}</span>
+        <span class="pill">Telegram: {% if telegram_linked %}✅{% else %}❌{% endif %}</span>
+        <span class="pill">Soglia: {{ criteria.soglia_notifica if criteria else 55 }}</span>
+      </div>
+    </div>
+    <div class="row">
+      {% if not (google_connected and telegram_linked) %}<a class="btn secondary" href="/onboarding">Completa setup</a>{% endif %}
+      <form action="/dashboard/toggle" method="post">
+        <button class="btn {% if user.is_active %}secondary{% endif %}">
+          {% if user.is_active %}Metti in pausa{% else %}Riattiva{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Modifica criteri</h3>
+  {% set action = "/dashboard/criteria" %}
+  {% include "_criteria_form.html" with context %}
+</div>
+
+<div class="card">
+  <h3>Offerte trovate ({{ rows|length }})</h3>
+  {% if not rows %}
+    <p class="muted">Ancora nessuna offerta valutata. Il ciclo gira ogni ora; le troverai qui.</p>
+  {% endif %}
+  {% for r in rows %}
+    <div class="job">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <span class="score">{{ r.match.score }}/100</span>
+          &nbsp; <strong>{{ r.job.titolo }}</strong>
+          {% if r.match.notificato_at %}<span class="pill">🔔 notificato</span>{% endif %}
+        </div>
+        {% if r.job.url %}<a href="{{ r.job.url }}" target="_blank" rel="noopener">apri ↗</a>{% endif %}
+      </div>
+      <div class="muted" style="margin:4px 0">
+        🏢 {{ r.job.azienda }} · 📍 {{ r.job.location or 'n/d' }}
+        {% if r.detail %} · 🗣 {{ r.detail.get('language','n/d') }} · 📝 {{ r.detail.get('contract_type','n/d') }} · ⏱ {{ r.detail.get('duration','n/d') }} · 💰 {{ r.detail.get('salary','n/d') }}{% endif %}
+      </div>
+      {% if r.detail and r.detail.get('match_reasons') %}
+        <div style="font-size:.9rem">💡 {{ r.detail.get('match_reasons') }}</div>
+      {% endif %}
+      {% if r.detail and r.detail.get('why_check') %}
+        <div class="muted" style="font-size:.85rem">⚠️ {{ r.detail.get('why_check') }}</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h3>Ultime esecuzioni</h3>
+  <table>
+    <tr><th>Quando (UTC)</th><th>Esito</th><th>Utenti</th><th>Fetch</th><th>Valutati</th><th>Notificati</th></tr>
+    {% for l in logs %}
+      <tr>
+        <td>{{ l.started_at.strftime('%Y-%m-%d %H:%M') if l.started_at else '' }}</td>
+        <td>{% if l.ok %}✅{% else %}❌{% endif %}</td>
+        <td>{{ l.users_processed }}</td>
+        <td>{{ l.jobs_fetched }}</td>
+        <td>{{ l.jobs_scored }}</td>
+        <td>{{ l.notified }}</td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

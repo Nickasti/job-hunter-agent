@@ -95,9 +95,13 @@ class GeminiScorer:
         return None
 
     # ------------------------------------------------------------------- score
-    def score(self, job) -> dict:
+    def score(self, job, system_prompt: str | None = None) -> dict:
         """
         Valuta un job con Gemini e ritorna il dict di scoring arricchito.
+        `system_prompt` opzionale: se None usa quello legacy (single-user);
+        nella piattaforma multi-utente si passa il prompt parametrico
+        costruito dai criteri dell'utente. Il budget/throttling è di ISTANZA:
+        creare UN solo GeminiScorer per ciclo → limite GLOBALE tra gli utenti.
         Solleva QuotaExhausted se il budget per-run è esaurito.
         """
         if self._calls_made >= config.GEMINI_MAX_CALLS_PER_RUN:
@@ -106,6 +110,7 @@ class GeminiScorer:
         self._throttle()
         client = self._get_client()
         user_content = prompts.build_user_content(job)
+        system_instruction = system_prompt or prompts.SYSTEM_PROMPT
 
         delay = 2.0
         for attempt in range(1, config.GEMINI_MAX_RETRIES + 1):
@@ -114,7 +119,7 @@ class GeminiScorer:
                     model=config.GEMINI_MODEL,
                     contents=user_content,
                     config={
-                        "system_instruction": prompts.SYSTEM_PROMPT,
+                        "system_instruction": system_instruction,
                         "response_mime_type": "application/json",
                         "temperature": 0.2,
                     },

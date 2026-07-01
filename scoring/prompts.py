@@ -94,3 +94,91 @@ def build_user_content(job) -> str:
         f"URL: {job.url or 'n/d'}\n"
         f"Descrizione/Testo:\n{(job.description or '(nessuna descrizione disponibile)')[:6000]}"
     )
+
+
+# ============================================================================
+#  Scoring PARAMETRICO (piattaforma multi-utente)
+#  Il prompt riceve i criteri dell'utente invece di valori hardcoded.
+# ============================================================================
+
+def _fmt(value: str | int, fallback: str) -> str:
+    v = str(value).strip() if value not in (None, "", 0) else ""
+    return v if v else fallback
+
+
+def build_system_prompt(criteria) -> str:
+    """
+    Costruisce il system prompt per lo scoring in base ai criteri dell'utente
+    (oggetto con attributi location_filter, lingua_pref, contratto_pref,
+    skills_keywords, salario_minimo, durata_minima, soglia_notifica).
+    Mantiene la griglia a 5 criteri con le condizioni eliminatorie, ma i valori
+    di riferimento sono quelli scelti dall'utente.
+    """
+    location = _fmt(getattr(criteria, "location_filter", ""), "qualsiasi località")
+    lingue = _fmt(getattr(criteria, "lingua_pref", ""), "italiano o inglese")
+    contratto = _fmt(getattr(criteria, "contratto_pref", ""), "stage/internship/junior")
+    skills = _fmt(getattr(criteria, "skills_keywords", ""), "(nessuna skill specifica)")
+    sal_min = int(getattr(criteria, "salario_minimo", 0) or 0)
+    dur_min = int(getattr(criteria, "durata_minima", 0) or 0)
+    soglia = int(getattr(criteria, "soglia_notifica", 55) or 55)
+
+    dur_rule = (
+        f"Durata >= {dur_min} mesi richiesta: se l'annuncio specifica una durata "
+        f"inferiore a {dur_min} mesi, SCARTA (score 0). "
+        if dur_min > 0
+        else "Nessun vincolo di durata minima. "
+    )
+    sal_rule = (
+        f"Retribuzione minima desiderata: {sal_min} EUR/mese. "
+        if sal_min > 0
+        else "Nessun vincolo di retribuzione minima. "
+    )
+
+    return f"""\
+Sei un assistente che valuta annunci di lavoro per un candidato secondo i SUOI
+criteri e restituisce ESCLUSIVAMENTE un oggetto JSON valido (nessun testo extra,
+nessun markdown, nessun blocco di codice).
+
+CRITERI DEL CANDIDATO
+- Località desiderata: {location}
+- Lingue accettate per l'annuncio: {lingue}
+- Tipo di contratto cercato: {contratto}
+- Skill/keyword rilevanti: {skills}
+- {sal_rule}
+- {dur_rule}
+
+Assegna un punteggio 0-100 sommando i 5 criteri. Alcuni sono ELIMINATORI:
+se scatta una condizione di scarto, lo score finale è 0.
+
+1) LOCALITÀ (eliminatorio): se l'annuncio NON è compatibile con "{location}"
+   (né in loco né remoto da lì), SCARTA (score 0).
+2) LINGUA (max 25): lingua tra quelle accettate ({lingue}) = 20-25;
+   lingua NON accettata (es. solo una lingua fuori lista) = SCARTA (score 0).
+3) CONTRATTO (max 30, eliminatorio se senior): coerente con "{contratto}"
+   e chiaramente junior/stage = 25-30; junior/entry generico = 15;
+   ambiguo non-senior = 5; full-time senior/manager/lead = SCARTA (score 0).
+4) MATCH SKILLS (max 25): forte (3+ tra: {skills}) = 25; medio (1-2) = 15;
+   attinente debole = 8; per nulla attinente = 0.
+5) DURATA + RETRIBUZIONE (max 20): {dur_rule}{sal_rule}
+   assegna fino a 10 per durata adeguata e fino a 10 per retribuzione
+   (>= soglia = 10; presente ma sotto soglia = 4-7; non menzionata = 6).
+
+REGOLE:
+- Se scatta una condizione di SCARTA, "score": 0 e spiega in "why_check".
+- Sii prudente sui profili senior/full-time permanenti: scarta.
+- Rispondi in ITALIANO nei campi testuali.
+- La soglia di notifica del candidato è {soglia} (solo informativa per te).
+
+Formato JSON OBBLIGATORIO (tutti i campi):
+{{
+  "score": <int 0-100>,
+  "language": "<lingua rilevata>",
+  "contract_type": "<descrizione breve>",
+  "duration": "<es. '6 mesi' | 'Non specificata'>",
+  "salary": "<es. '1000 EUR/mese' | 'Non menzionata'>",
+  "skills_match": "<forte|medio|debole|off>",
+  "location_ok": <true|false>,
+  "match_reasons": "<1-2 frasi>",
+  "why_check": "<1 frase su cosa verificare>"
+}}
+"""
