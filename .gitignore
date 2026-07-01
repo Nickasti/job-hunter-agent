@@ -1,0 +1,29 @@
+# Secrets / credenziali — MAI committare
+.env
+credentials.json
+client_secret*.json
+token.json
+gmail_token_output.txt
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Log
+logs/
+*.log
+
+# Playwright
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NB: storage/jobs.db NON è ignorato di proposito:
+# viene committato dal workflow GitHub Actions per persistere la dedup.

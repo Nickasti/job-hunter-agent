@@ -1,0 +1,297 @@
+# ============================================================================
+#  companies.yaml — Career page da monitorare (Fonte 2)
+# ============================================================================
+#
+# Ogni voce supporta i campi:
+#   name            : nome azienda (mostrato nelle notifiche)
+#   enabled         : true/false (per disattivare temporaneamente una fonte)
+#   strategy        : "api" | "static" | "dynamic"
+#   career_page_url : URL della pagina annunci (per static/dynamic)
+#   api_type        : "greenhouse" | "lever"   (solo se strategy=api)
+#   api_token       : board token dell'ATS      (solo se strategy=api)
+#   selector        : CSS selector delle card/anchor dei job (static/dynamic, opz.)
+#   location_filter : lista; tiene solo i job che citano una di queste stringhe
+#   keyword_filter  : lista; tiene solo i titoli che contengono una di queste
+#   verified        : true se config testata; false = DA VERIFICARE al 1° run
+#
+# IMPORTANTE: i campi `api_token`, `career_page_url` e `selector` delle voci con
+# `verified: false` sono BEST-GUESS. Verificali aprendo la career page reale e,
+# se serve, aggiorna token/URL/selector. Vedi sezione "Tarare le aziende" nel
+# README. Le voci con strategy=dynamic richiedono Playwright installato.
+# ============================================================================
+
+# ---- ATS con API pubblica (più affidabili) --------------------------------
+
+- name: Cloudflare
+  enabled: true
+  strategy: api
+  api_type: greenhouse
+  api_token: cloudflare
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Talkdesk
+  enabled: true
+  strategy: api
+  api_type: greenhouse
+  api_token: talkdesk
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Remote - Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Feedzai
+  enabled: true
+  strategy: api
+  api_type: greenhouse
+  api_token: feedzai
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Coimbra"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Unbabel
+  enabled: true
+  strategy: api
+  api_type: lever
+  api_token: unbabel
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: OutSystems
+  enabled: true
+  strategy: api
+  api_type: greenhouse
+  api_token: outsystems
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+# ---- Portali proprietari / SPA (Playwright) -------------------------------
+
+- name: Revolut
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.revolut.com/careers/?department=&location=Lisbon"
+  selector: "a[href*='/position/'], a[href*='/careers/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Farfetch
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.farfetchcareers.com/job-search/?location=Portugal"
+  selector: "a[href*='/job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Porto"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Mindera
+  enabled: true
+  strategy: static
+  career_page_url: "https://mindera.com/careers/"
+  selector: "a[href*='/job'], a[href*='careers']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Porto", "Remote"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Critical Software
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.criticalsoftware.com/"
+  selector: "a[href*='job'], a[href*='vaga']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Coimbra", "Porto"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Mercedes-Benz.io
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.mercedes-benz.io/jobs"
+  selector: "a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "working student", "estágio", "estagio"]
+  verified: false
+
+- name: Volkswagen Digital Solutions
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.vwds.pt/careers"
+  selector: "a[href*='job'], a[href*='career']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Natixis in Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://natixisinportugal.com/careers/"
+  selector: "a[href*='job'], a[href*='vaga']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Porto"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+# ---- Big corp (Workday / portali enterprise) — dynamic, verificare ---------
+
+- name: Microsoft Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://jobs.careers.microsoft.com/global/en/search?lc=Portugal&exp=Students%20and%20graduates"
+  selector: "a[href*='/job/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Accenture Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.accenture.com/pt-pt/careers/jobsearch?jk=&sb=0&vw=0&is_rj=0&pg=1"
+  selector: "a[href*='/jobdetails/'], a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Google Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.google.com/about/careers/applications/jobs/results/?location=Portugal"
+  selector: "a[href*='/jobs/results/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Amazon (AWS) Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.amazon.jobs/en/search?base_query=&loc_query=Portugal"
+  selector: "a[href*='/en/jobs/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Reply Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.reply.com/en/careers"
+  selector: "a[href*='job'], a[href*='career']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "stage", "estágio", "estagio"]
+  verified: false
+
+- name: Salesforce Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.salesforce.com/en/jobs/?search=&country=Portugal"
+  selector: "a[href*='/jobs/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "associate", "estágio"]
+  verified: false
+
+- name: Adobe Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.adobe.com/us/en/search-results?keywords=Portugal"
+  selector: "a[href*='/job/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio"]
+  verified: false
+
+- name: Deloitte Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://apply.deloitte.com/en_US/careers/SearchJobs/?3743=%5B7150%5D&3743_format=2823"
+  selector: "a[href*='JobDetail'], a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: EY Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.ey.com/ey/search/?q=&locationsearch=Portugal"
+  selector: "a[href*='/job/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: PwC Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.pwc.pt/pt/carreiras.html"
+  selector: "a[href*='job'], a[href*='career'], a[href*='recrutamento']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Capgemini Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.capgemini.com/pt-pt/carreiras/ofertas-de-emprego/?size=10&country=Portugal"
+  selector: "a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Publicis Sapient Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.publicissapient.com/jobs?location=Portugal"
+  selector: "a[href*='/jobs/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: SAS Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.sas.com/en_us/careers/jobs.html#/?location=Portugal"
+  selector: "a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "academy", "estágio"]
+  verified: false
+
+- name: BNP Paribas Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://group.bnpparibas/en/careers/all-job-offers?countries=Portugal"
+  selector: "a[href*='job-offer'], a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Porto"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "vie", "estágio"]
+  verified: false
+
+- name: SAP Portugal
+  enabled: false   # non in lista originale; placeholder disattivato
+  strategy: dynamic
+  career_page_url: "https://jobs.sap.com/search/?q=&locationsearch=Portugal"
+  selector: "a[href*='/job/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "working student"]
+  verified: false
+
+- name: Euronext Lisbon
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.euronext.com/en/about/careers/our-job-offers"
+  selector: "a[href*='job'], a[href*='career']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
+
+- name: Siemens Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://jobs.siemens.com/careers?location=Portugal&pid=&domain=siemens.com"
+  selector: "a[href*='/careers/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Amadora"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "working student", "estágio"]
+  verified: false
+
+- name: Veolia Portugal
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://jobs.veolia.com/en_GB/careers/SearchJobs/?3_5_3=Portugal"
+  selector: "a[href*='JobDetail'], a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
+  verified: false
