@@ -18,8 +18,12 @@ load_dotenv(BASE_DIR / ".env")
 
 
 def _get(name: str, default: str | None = None) -> str | None:
-    val = os.environ.get(name, default)
-    return val.strip() if isinstance(val, str) else val
+    # Una variabile impostata ma VUOTA (tipico su GitHub Actions con vars non
+    # valorizzate) deve comportarsi come "non impostata" → usa il default.
+    val = os.environ.get(name)
+    if val is None or val.strip() == "":
+        return default
+    return val.strip()
 
 
 def _get_bool(name: str, default: bool) -> bool:

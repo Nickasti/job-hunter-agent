@@ -56,6 +56,10 @@ jobs:
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
           GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
           SCORE_THRESHOLD: ${{ vars.SCORE_THRESHOLD }}
+          # Interruttori fonte (Repository variables). Se vuoti valgono i default:
+          # ENABLE_SCRAPING default true, ENABLE_GMAIL default true.
+          ENABLE_SCRAPING: ${{ vars.ENABLE_SCRAPING }}
+          ENABLE_GMAIL: ${{ vars.ENABLE_GMAIL }}
         run: python main.py
 
       # Persistenza: ricommitta jobs.db se è cambiato. Il messaggio contiene
