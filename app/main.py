@@ -85,11 +85,11 @@ def register(
     email = email.strip().lower()
     if len(password) < 8:
         return templates.TemplateResponse(
-            "register.html", {"request": request, "error": "Password troppo corta (min 8)."}
+            request, "register.html", {"error": "Password troppo corta (min 8)."}
         )
     if get_user_by_email(db, email):
         return templates.TemplateResponse(
-            "register.html", {"request": request, "error": "Email già registrata."}
+            request, "register.html", {"error": "Email già registrata."}
         )
     user = create_user(db, email, password)
     login_session(request, user)
@@ -111,7 +111,7 @@ def login(
     user = authenticate(db, email, password)
     if not user:
         return templates.TemplateResponse(
-            "login.html", {"request": request, "error": "Credenziali non valide."}
+            request, "login.html", {"error": "Credenziali non valide."}
         )
     login_session(request, user)
     return _redirect("/dashboard")
@@ -150,8 +150,10 @@ def google_start(request: Request, db: Session = Depends(get_session)):
     if not user:
         return _redirect("/login")
     state = secrets.token_urlsafe(24)
+    url, code_verifier = oauth_google.authorization_url(state)
     request.session["oauth_state"] = state
-    return _redirect(oauth_google.authorization_url(state))
+    request.session["oauth_code_verifier"] = code_verifier
+    return _redirect(url)
 
 
 @app.get("/auth/google/callback")
@@ -167,7 +169,9 @@ def google_callback(
     if not code or state != request.session.get("oauth_state"):
         raise HTTPException(status_code=400, detail="OAuth state non valido.")
 
-    creds = oauth_google.exchange_code(code, state=state)
+    creds = oauth_google.exchange_code(
+        code, state=state, code_verifier=request.session.get("oauth_code_verifier")
+    )
     if not creds.refresh_token:
         raise HTTPException(
             status_code=400,

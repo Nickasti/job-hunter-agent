@@ -7,6 +7,11 @@ salvato. Per il fetch email ricostruiamo le credenziali da quel refresh token.
 """
 from __future__ import annotations
 
+import os
+
+# Google a volte restituisce scope extra (es. openid): evita il "Scope has changed".
+os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
+
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
@@ -35,20 +40,26 @@ def _flow(state: str | None = None) -> Flow:
     )
 
 
-def authorization_url(state: str) -> str:
-    """URL della consent screen. `state` lega il callback all'utente/sessione."""
+def authorization_url(state: str) -> tuple[str, str]:
+    """
+    URL della consent screen. `state` lega il callback all'utente/sessione.
+    Ritorna anche il `code_verifier` PKCE: va conservato in sessione e ripassato
+    a exchange_code(), altrimenti Google rifiuta con "Missing code verifier".
+    """
     flow = _flow(state=state)
     url, _ = flow.authorization_url(
         access_type="offline",       # necessario per ottenere il refresh_token
         include_granted_scopes="true",
         prompt="consent",            # forza il rilascio del refresh_token
     )
-    return url
+    return url, flow.code_verifier
 
 
-def exchange_code(code: str, state: str | None = None) -> Credentials:
+def exchange_code(code: str, state: str | None = None, code_verifier: str | None = None) -> Credentials:
     """Scambia il code del callback per le credenziali (con refresh_token)."""
     flow = _flow(state=state)
+    if code_verifier:
+        flow.code_verifier = code_verifier
     flow.fetch_token(code=code)
     return flow.credentials
 
