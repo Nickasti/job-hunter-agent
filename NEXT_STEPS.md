@@ -49,15 +49,11 @@ profilo, valutandole con **Gemini**. Esiste in due forme nello stesso repo:
 - [x] App live su **https://job-hunter-platform.onrender.com** (healthz ok)
 - [x] `POST /api/run-cycle` verificato con bearer token (ok:true, DB Neon raggiunto)
 
-### PASSO 4 — Finalizzazione
-- [ ] **Impostare `PUBLIC_BASE_URL` su Render** = `https://job-hunter-platform.onrender.com`
-      (Dashboard Render → job-hunter-platform → Environment → modifica la variabile → Save;
-      parte un redeploy automatico). Serve per OAuth Google e webhook Telegram.
-- [x] Redirect URI Google: già registrato correttamente
-      (`https://job-hunter-platform.onrender.com/auth/google/callback`)
-- [ ] Registrare il **webhook Telegram** (dopo il redeploy con PUBLIC_BASE_URL):
-      `POST https://job-hunter-platform.onrender.com/telegram/set-webhook`
-      con header `Authorization: Bearer <RUN_CYCLE_TOKEN>`
+### PASSO 4 — Finalizzazione ✅ COMPLETATO
+- [x] `PUBLIC_BASE_URL` impostato su Render (`https://job-hunter-platform.onrender.com`)
+- [x] Redirect URI Google già registrato correttamente
+- [x] Webhook Telegram registrato e verificato (getWebhookInfo: nessun errore)
+      (fix: TELEGRAM_WEBHOOK_SECRET sanitizzato al charset ammesso da Telegram)
 
 ### PASSO 5 — Cron su GitHub Actions ✅ COMPLETATO
 - [x] Secret `RUN_CYCLE_URL` e `RUN_CYCLE_TOKEN` impostati nel repo
