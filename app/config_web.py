@@ -58,8 +58,15 @@ GOOGLE_REDIRECT_PATH = "/auth/google/callback"
 TELEGRAM_BOT_TOKEN = _get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_BOT_USERNAME = _get("TELEGRAM_BOT_USERNAME")  # senza @, es. Isola_ai_agent_bot
 TELEGRAM_WEBHOOK_PATH = "/telegram/webhook"
-# Segreto opzionale che Telegram rimanda nell'header per validare il webhook.
-TELEGRAM_WEBHOOK_SECRET = _get("TELEGRAM_WEBHOOK_SECRET", "dev-tg-webhook")
+# Segreto che Telegram rimanda nell'header per validare il webhook.
+# Telegram ammette SOLO [A-Za-z0-9_-]: sanitizziamo qualunque valore arrivi
+# dall'ambiente (es. auto-generato da Render con caratteri non ammessi),
+# in modo coerente tra registrazione (setWebhook) e verifica dell'header.
+import re as _re  # noqa: E402
+
+TELEGRAM_WEBHOOK_SECRET = _re.sub(
+    r"[^A-Za-z0-9_-]", "-", _get("TELEGRAM_WEBHOOK_SECRET", "dev-tg-webhook") or ""
+)[:256]
 
 # ------------------------------------------------------------------ Gemini (condiviso)
 GEMINI_API_KEY = _get("GEMINI_API_KEY")
