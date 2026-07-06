@@ -37,10 +37,35 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 
 def init_db() -> None:
-    """Crea le tabelle se non esistono (idempotente)."""
+    """Crea le tabelle se non esistono e applica micro-migrazioni idempotenti."""
     from app import models_db  # noqa: F401 — registra i modelli su Base.metadata
 
     Base.metadata.create_all(bind=engine)
+    _ensure_columns()
+
+
+def _ensure_columns() -> None:
+    """
+    Aggiunge colonne mancanti a tabelle già esistenti (create_all NON altera le
+    tabelle esistenti). Compatibile SQLite e Postgres: aggiunge solo se assenti.
+    """
+    from sqlalchemy import inspect
+
+    wanted = {
+        "user_criteria": {
+            "countries": "TEXT DEFAULT ''",
+            "cities": "TEXT DEFAULT ''",
+        },
+    }
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table, cols in wanted.items():
+            if not insp.has_table(table):
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            for col, ddl in cols.items():
+                if col not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
 
 
 @contextmanager

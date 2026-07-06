@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import config_web, crypto, oauth_google, telegram_bot
+from app import config_web, crypto, geo, oauth_google, telegram_bot
 from app.auth import (
     authenticate,
     create_user,
@@ -62,6 +62,22 @@ def _require_login(request: Request, db: Session):
 
 def _redirect(path: str) -> RedirectResponse:
     return RedirectResponse(path, status_code=303)
+
+
+def _split_csv(s: str | None) -> list[str]:
+    return [x.strip() for x in (s or "").split(",") if x.strip()]
+
+
+def _criteria_ctx(criteria) -> dict:
+    """Variabili per i menù a tendina dei criteri (lingue + Stati/città)."""
+    return {
+        "languages": geo.LANGUAGES,
+        "europe": geo.frontend(),
+        "country_choices": geo.country_choices(),
+        "sel_languages": _split_csv(getattr(criteria, "lingua_pref", "")),
+        "sel_countries": _split_csv(getattr(criteria, "countries", "")),
+        "sel_cities": _split_csv(getattr(criteria, "cities", "")),
+    }
 
 
 # ============================================================ root / auth
@@ -139,6 +155,7 @@ def onboarding(request: Request, db: Session = Depends(get_session)):
             "telegram_linked": bool(user.telegram and user.telegram.chat_id),
             "deep_link": telegram_bot.deep_link(user.telegram.link_code) if user.telegram else "#",
             "criteria": user.criteria,
+            **_criteria_ctx(user.criteria),
         },
     )
 
@@ -210,30 +227,44 @@ def telegram_status(request: Request, db: Session = Depends(get_session)):
 
 
 # ------------------------------------------------ Criteri
+def _to_int(value, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @app.post("/onboarding/criteria")
 @app.post("/dashboard/criteria")
-def save_criteria(
-    request: Request,
-    location_filter: str = Form(""),
-    lingua_pref: str = Form(""),
-    contratto_pref: str = Form(""),
-    skills_keywords: str = Form(""),
-    salario_minimo: int = Form(0),
-    durata_minima: int = Form(0),
-    soglia_notifica: int = Form(55),
-    db: Session = Depends(get_session),
-):
+async def save_criteria(request: Request, db: Session = Depends(get_session)):
     user = _require_login(request, db)
     if not user:
         return _redirect("/login")
+
+    # Lettura diadretta del form: getlist() gestisce i campi multi-valore
+    # (menù a tendina a selezione multipla) in modo affidabile.
+    form = await request.form()
+    languages = form.getlist("languages")
+    countries = form.getlist("countries")
+    cities = form.getlist("cities")
+
+    # Validazione contro gli elenchi controllati (niente valori arbitrari)
+    valid_langs = [l for l in languages if l in geo.LANGUAGES]
+    valid_codes = [x for x in countries if x in geo.valid_country_codes()]
+    city_ids = geo.valid_city_ids()
+    valid_cities = [x for x in cities if x in city_ids]
+
     c: UserCriteria = user.criteria or UserCriteria(user_id=user.id)
-    c.location_filter = location_filter.strip()
-    c.lingua_pref = lingua_pref.strip()
-    c.contratto_pref = contratto_pref.strip()
-    c.skills_keywords = skills_keywords.strip()
-    c.salario_minimo = max(0, int(salario_minimo or 0))
-    c.durata_minima = max(0, int(durata_minima or 0))
-    c.soglia_notifica = max(0, min(100, int(soglia_notifica or 55)))
+    c.lingua_pref = ",".join(valid_langs)
+    c.countries = ",".join(valid_codes)
+    c.cities = ",".join(valid_cities)
+    # location_filter = sinonimi espansi (inglese/italiano/locale) per lo scoring
+    c.location_filter = ",".join(geo.expand(valid_codes, valid_cities))
+    c.contratto_pref = (form.get("contratto_pref") or "").strip()
+    c.skills_keywords = (form.get("skills_keywords") or "").strip()
+    c.salario_minimo = max(0, _to_int(form.get("salario_minimo"), 0))
+    c.durata_minima = max(0, _to_int(form.get("durata_minima"), 0))
+    c.soglia_notifica = max(0, min(100, _to_int(form.get("soglia_notifica"), 55)))
     db.add(c)
     db.commit()
     dest = "/dashboard" if request.url.path.startswith("/dashboard") else "/onboarding"
@@ -284,6 +315,7 @@ def dashboard(request: Request, db: Session = Depends(get_session)):
             "criteria": user.criteria,
             "rows": rows,
             "logs": logs,
+            **_criteria_ctx(user.criteria),
         },
     )
 

@@ -83,8 +83,11 @@ class UserCriteria(Base):
     __tablename__ = "user_criteria"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    location_filter: Mapped[str] = mapped_column(Text, default="")     # es. "Lisbon, Lisboa, Portugal"
-    lingua_pref: Mapped[str] = mapped_column(String(64), default="")   # es. "Italiano, Inglese"
+    location_filter: Mapped[str] = mapped_column(Text, default="")     # sinonimi espansi per lo scoring
+    # Selezioni "grezze" dai menù a tendina (per ri-renderizzare il form):
+    countries: Mapped[str] = mapped_column(Text, default="")           # CSV di codici paese, es. "PT,ES"
+    cities: Mapped[str] = mapped_column(Text, default="")              # CSV di id città, es. "PT|Lisbona"
+    lingua_pref: Mapped[str] = mapped_column(String(255), default="")  # CSV lingue, es. "Italiano,Inglese"
     contratto_pref: Mapped[str] = mapped_column(String(128), default="")  # es. "stage, internship, junior"
     skills_keywords: Mapped[str] = mapped_column(Text, default="")     # CSV di keyword
     salario_minimo: Mapped[int] = mapped_column(Integer, default=0)    # EUR/mese, 0 = indifferente

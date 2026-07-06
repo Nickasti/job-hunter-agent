@@ -1,34 +1,104 @@
-{# Frammento riusabile: form dei criteri. `action` passato dal chiamante. #}
+{# Frammento riusabile: form dei criteri con menù a tendina multi-selezione.
+   `action` passato dal chiamante. Richiede in contesto: languages, sel_languages,
+   country_choices, sel_countries, europe (dict), sel_cities. #}
 <form action="{{ action }}" method="post">
+  <p class="muted" style="font-size:.85rem;margin-top:0">
+    Scegli dagli elenchi. Per selezionare <strong>più voci</strong> tieni premuto
+    <kbd>Ctrl</kbd> (su Mac <kbd>Cmd</kbd>) mentre clicchi. Lascia vuoto = indifferente.
+  </p>
+
   <div class="grid2">
     <div>
-      <label>Località (separate da virgola)</label>
-      <input name="location_filter" value="{{ criteria.location_filter if criteria else '' }}" placeholder="Lisbon, Lisboa, Portugal">
-    </div>
-    <div>
       <label>Lingue accettate</label>
-      <input name="lingua_pref" value="{{ criteria.lingua_pref if criteria else '' }}" placeholder="Italiano, Inglese">
+      <select name="languages" multiple size="6">
+        {% for lang in languages %}
+          <option value="{{ lang }}" {% if lang in sel_languages %}selected{% endif %}>{{ lang }}</option>
+        {% endfor %}
+      </select>
     </div>
-    <div>
-      <label>Tipo di contratto</label>
-      <input name="contratto_pref" value="{{ criteria.contratto_pref if criteria else '' }}" placeholder="stage, internship, junior">
-    </div>
+
     <div>
       <label>Skill / keyword (separate da virgola)</label>
       <input name="skills_keywords" value="{{ criteria.skills_keywords if criteria else '' }}" placeholder="python, sql, crm, marketing">
     </div>
+
+    <div>
+      <label>Stato (prima scegli qui)</label>
+      <select name="countries" id="sel-countries" multiple size="8">
+        {% for code, label in country_choices %}
+          <option value="{{ code }}" {% if code in sel_countries %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>Città (compaiono in base agli Stati scelti)</label>
+      <select name="cities" id="sel-cities" multiple size="8">
+        {# Popolato via JavaScript dalla cascata #}
+      </select>
+      <p class="muted" id="cities-hint" style="font-size:.8rem;margin:6px 0 0">
+        Seleziona prima uno o più Stati per vedere le città.
+      </p>
+    </div>
+
+    <div>
+      <label>Tipo di contratto</label>
+      <input name="contratto_pref" value="{{ criteria.contratto_pref if criteria else '' }}" placeholder="stage, internship, junior">
+    </div>
+
     <div>
       <label>Retribuzione minima (EUR/mese, 0 = indifferente)</label>
       <input type="number" name="salario_minimo" min="0" value="{{ criteria.salario_minimo if criteria else 0 }}">
     </div>
+
     <div>
       <label>Durata minima (mesi, 0 = indifferente)</label>
       <input type="number" name="durata_minima" min="0" value="{{ criteria.durata_minima if criteria else 0 }}">
     </div>
+
     <div>
       <label>Soglia notifica (0-100)</label>
       <input type="number" name="soglia_notifica" min="0" max="100" value="{{ criteria.soglia_notifica if criteria else 55 }}">
     </div>
   </div>
+
   <div style="margin-top:16px"><button type="submit">Salva criteri</button></div>
 </form>
+
+<script>
+(function () {
+  const EUROPE = {{ europe | tojson }};
+  const PRESELECTED_CITIES = {{ sel_cities | tojson }};
+  const countriesEl = document.getElementById('sel-countries');
+  const citiesEl = document.getElementById('sel-cities');
+  const hintEl = document.getElementById('cities-hint');
+  if (!countriesEl || !citiesEl) return;
+
+  function rebuildCities() {
+    // Preserva le città già selezionate (dall'utente e dal salvataggio precedente)
+    const keep = new Set(
+      Array.from(citiesEl.selectedOptions).map(o => o.value).concat(PRESELECTED_CITIES)
+    );
+    const chosen = Array.from(countriesEl.selectedOptions).map(o => o.value);
+    citiesEl.innerHTML = '';
+    chosen.forEach(code => {
+      const country = EUROPE[code];
+      if (!country) return;
+      const group = document.createElement('optgroup');
+      group.label = country.label;
+      country.cities.forEach(city => {
+        const opt = document.createElement('option');
+        opt.value = city.id;
+        opt.textContent = city.label;
+        if (keep.has(city.id)) opt.selected = true;
+        group.appendChild(opt);
+      });
+      citiesEl.appendChild(group);
+    });
+    hintEl.style.display = chosen.length ? 'none' : 'block';
+  }
+
+  countriesEl.addEventListener('change', rebuildCities);
+  rebuildCities(); // popola in base agli Stati già selezionati (modalità modifica)
+})();
+</script>
