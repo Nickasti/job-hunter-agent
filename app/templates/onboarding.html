@@ -53,6 +53,11 @@
       letter-spacing:-4.8px;line-height:1;margin:0;color:#000;text-shadow:0 2px 30px rgba(255,255,255,.5);}
     .subtitle{font-family:'Fustat','Inter',sans-serif;font-weight:500;font-size:20px;
       letter-spacing:-0.4px;color:var(--gray);max-width:640px;margin:0;text-shadow:0 1px 18px rgba(255,255,255,.6);}
+    .cta{display:inline-flex;align-items:center;justify-content:center;margin-top:8px;
+      height:58px;padding:0 42px;border-radius:14px;background:#000;color:#fff;
+      font-family:'Schibsted Grotesk';font-weight:600;font-size:19px;letter-spacing:-0.2px;
+      box-shadow:0 12px 30px rgba(0,0,0,.25);transition:transform .12s ease, box-shadow .12s ease;}
+    .cta:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,0,0,.32);}
 
     /* ---------------- CONTENT (onboarding steps) ---------------- */
     .content{max-width:900px;margin:-60px auto 0;padding:0 24px 60px;position:relative;z-index:3;}
@@ -114,54 +119,10 @@
         </div>
         <h1 class="headline">Transform Data Quickly</h1>
         <p class="subtitle">Upload your information and get powerful insights right away. Work smarter and achieve goals effortlessly.</p>
+        <a class="cta" href="/onboarding/setup">Inizia ora</a>
       </div>
     </div>
   </section>
-
-  <!-- ===================== ONBOARDING STEPS ===================== -->
-  <main class="content">
-    <h2>Configura il tuo agente</h2>
-    <p class="muted">Ciao {{ user.email }} — completa i 3 passi, poi attiva le notifiche.</p>
-
-    <div class="card">
-      <h3><span class="step-num">1</span>Collega Google (Gmail)</h3>
-      <p class="muted">Serve a leggere i tuoi LinkedIn Job Alert. Non crei nessun progetto: usi il client della piattaforma.</p>
-      {% if google_connected %}
-        <span class="ok">✅ Google collegato</span>
-      {% else %}
-        <a class="btn btn-dark" href="/auth/google/start">Connetti Gmail</a>
-      {% endif %}
-    </div>
-
-    <div class="card">
-      <h3><span class="step-num">2</span>Collega Telegram</h3>
-      <p class="muted">Apri il bot e premi Avvia: il collegamento è automatico, nessun bot da creare.</p>
-      {% if telegram_linked %}
-        <span class="ok">✅ Telegram collegato</span>
-      {% else %}
-        <a class="btn btn-dark" href="{{ deep_link }}" target="_blank" rel="noopener">Apri il bot e premi Avvia</a>
-        <p style="margin-top:12px" hx-get="/onboarding/telegram/status" hx-trigger="load, every 4s" hx-swap="innerHTML">
-          <span class="pending">⏳ In attesa del tuo /start sul bot…</span>
-        </p>
-      {% endif %}
-    </div>
-
-    <div class="card">
-      <h3><span class="step-num">3</span>I tuoi criteri di ricerca</h3>
-      {% set action = "/onboarding/criteria" %}
-      {% include "_criteria_form.html" with context %}
-    </div>
-
-    <div class="card">
-      <h3><span class="step-num">4</span>Attiva</h3>
-      <p class="muted">Quando Google e Telegram sono collegati e i criteri salvati, attiva l'agente.</p>
-      <form action="/onboarding/activate" method="post">
-        <button type="submit" {% if not (google_connected and telegram_linked) %}disabled{% endif %}>
-          Attiva e vai alla dashboard
-        </button>
-      </form>
-    </div>
-  </main>
 
   <!-- ===================== VIDEO FADE SYSTEM (no CSS transitions) ===================== -->
   <script>

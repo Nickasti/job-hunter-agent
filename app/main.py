@@ -161,6 +161,27 @@ def onboarding(request: Request, db: Session = Depends(get_session)):
     )
 
 
+@app.get("/onboarding/setup", response_class=HTMLResponse)
+def onboarding_setup(request: Request, db: Session = Depends(get_session)):
+    """Pagina di configurazione (i passi), raggiunta dal pulsante 'Inizia ora'."""
+    user = _require_login(request, db)
+    if not user:
+        return _redirect("/login")
+    return templates.TemplateResponse(
+        request,
+        "setup.html",
+        {
+            "request": request,
+            "user": user,
+            "google_connected": user.google is not None,
+            "telegram_linked": bool(user.telegram and user.telegram.chat_id),
+            "deep_link": telegram_bot.deep_link(user.telegram.link_code) if user.telegram else "#",
+            "criteria": user.criteria,
+            **_criteria_ctx(user.criteria),
+        },
+    )
+
+
 # ------------------------------------------------ Google OAuth
 @app.get("/auth/google/start")
 def google_start(request: Request, db: Session = Depends(get_session)):
