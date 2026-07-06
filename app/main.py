@@ -272,6 +272,10 @@ async def save_criteria(request: Request, db: Session = Depends(get_session)):
     c.durata_minima = max(0, _to_int(form.get("durata_minima"), 0))
     c.soglia_notifica = max(0, min(100, _to_int(form.get("soglia_notifica"), 55)))
     db.add(c)
+    # I criteri sono cambiati: azzera le valutazioni già fatte, così i job
+    # verranno RI-valutati col nuovo filtro al prossimo ciclo (niente risultati
+    # "congelati" sotto criteri vecchi).
+    db.query(UserMatch).filter(UserMatch.user_id == user.id).delete()
     db.commit()
     dest = "/dashboard" if request.url.path.startswith("/dashboard") else "/onboarding"
     return _redirect(dest)
@@ -294,10 +298,12 @@ def dashboard(request: Request, db: Session = Depends(get_session)):
     if not user:
         return _redirect("/login")
 
+    # Mostra solo le offerte pertinenti: score > 0 esclude quelle scartate dal
+    # pre-filtro (località/senior sbagliati), che avrebbero score 0.
     matches = db.execute(
         select(UserMatch, UserJob)
         .join(UserJob, UserMatch.job_id == UserJob.id)
-        .where(UserMatch.user_id == user.id)
+        .where(UserMatch.user_id == user.id, UserMatch.score > 0)
         .order_by(UserMatch.score.desc(), UserMatch.scored_at.desc())
         .limit(100)
     ).all()
