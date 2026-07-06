@@ -82,9 +82,17 @@ def _criteria_ctx(criteria) -> dict:
 
 
 # ============================================================ root / auth
+def _render_hero(request: Request, db: Session):
+    """Landing pubblica (hero). Visibile a tutti; i pulsanti si adattano al login."""
+    user = get_current_user(request, db)
+    return templates.TemplateResponse(
+        request, "onboarding.html", {"request": request, "logged_in": user is not None}
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_session)):
-    return _redirect("/dashboard" if _require_login(request, db) else "/login")
+    return _render_hero(request, db)
 
 
 @app.get("/register", response_class=HTMLResponse)
@@ -110,7 +118,7 @@ def register(
         )
     user = create_user(db, email, password)
     login_session(request, user)
-    return _redirect("/onboarding")
+    return _redirect("/onboarding/setup")
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -143,22 +151,8 @@ def logout(request: Request):
 # ============================================================ onboarding
 @app.get("/onboarding", response_class=HTMLResponse)
 def onboarding(request: Request, db: Session = Depends(get_session)):
-    user = _require_login(request, db)
-    if not user:
-        return _redirect("/login")
-    return templates.TemplateResponse(
-        request,
-        "onboarding.html",
-        {
-            "request": request,
-            "user": user,
-            "google_connected": user.google is not None,
-            "telegram_linked": bool(user.telegram and user.telegram.chat_id),
-            "deep_link": telegram_bot.deep_link(user.telegram.link_code) if user.telegram else "#",
-            "criteria": user.criteria,
-            **_criteria_ctx(user.criteria),
-        },
-    )
+    # Alias pubblico della landing (stessa hero della root).
+    return _render_hero(request, db)
 
 
 @app.get("/onboarding/setup", response_class=HTMLResponse)
@@ -232,7 +226,7 @@ def google_callback(
             )
         )
     db.commit()
-    return _redirect("/onboarding")
+    return _redirect("/onboarding/setup")
 
 
 # ------------------------------------------------ Telegram link
@@ -298,7 +292,7 @@ async def save_criteria(request: Request, db: Session = Depends(get_session)):
     # "congelati" sotto criteri vecchi).
     db.query(UserMatch).filter(UserMatch.user_id == user.id).delete()
     db.commit()
-    dest = "/dashboard" if request.url.path.startswith("/dashboard") else "/onboarding"
+    dest = "/dashboard" if request.url.path.startswith("/dashboard") else "/onboarding/setup"
     return _redirect(dest)
 
 
