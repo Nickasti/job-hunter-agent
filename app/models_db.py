@@ -87,6 +87,7 @@ class UserCriteria(Base):
     # Selezioni "grezze" dai menù a tendina (per ri-renderizzare il form):
     countries: Mapped[str] = mapped_column(Text, default="")           # CSV di codici paese, es. "PT,ES"
     cities: Mapped[str] = mapped_column(Text, default="")              # CSV di id città, es. "PT|Lisbona"
+    cities_custom: Mapped[str] = mapped_column(Text, default="")       # città scritte a mano, CSV libero
     lingua_pref: Mapped[str] = mapped_column(String(255), default="")  # CSV lingue, es. "Italiano,Inglese"
     contratto_pref: Mapped[str] = mapped_column(String(128), default="")  # es. "stage, internship, junior"
     skills_keywords: Mapped[str] = mapped_column(Text, default="")     # CSV di keyword

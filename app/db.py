@@ -55,6 +55,7 @@ def _ensure_columns() -> None:
         "user_criteria": {
             "countries": "TEXT DEFAULT ''",
             "cities": "TEXT DEFAULT ''",
+            "cities_custom": "TEXT DEFAULT ''",
         },
     }
     insp = inspect(engine)

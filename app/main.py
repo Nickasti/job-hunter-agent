@@ -77,6 +77,7 @@ def _criteria_ctx(criteria) -> dict:
         "sel_languages": _split_csv(getattr(criteria, "lingua_pref", "")),
         "sel_countries": _split_csv(getattr(criteria, "countries", "")),
         "sel_cities": _split_csv(getattr(criteria, "cities", "")),
+        "sel_cities_custom": getattr(criteria, "cities_custom", "") or "",
     }
 
 
@@ -254,12 +255,17 @@ async def save_criteria(request: Request, db: Session = Depends(get_session)):
     city_ids = geo.valid_city_ids()
     valid_cities = [x for x in cities if x in city_ids]
 
+    # Città scritte a mano (non in elenco): CSV libero.
+    custom_list = [x.strip() for x in (form.get("cities_custom") or "").split(",") if x.strip()]
+
     c: UserCriteria = user.criteria or UserCriteria(user_id=user.id)
     c.lingua_pref = ",".join(valid_langs)
     c.countries = ",".join(valid_codes)
     c.cities = ",".join(valid_cities)
-    # location_filter = sinonimi espansi (inglese/italiano/locale) per lo scoring
-    c.location_filter = ",".join(geo.expand(valid_codes, valid_cities))
+    c.cities_custom = ", ".join(custom_list)
+    # location_filter = sinonimi espansi (EN/IT/locale) + città a mano, per lo scoring
+    expanded = geo.expand(valid_codes, valid_cities) + custom_list
+    c.location_filter = ",".join(dict.fromkeys(expanded))  # dedup, ordine preservato
     c.contratto_pref = (form.get("contratto_pref") or "").strip()
     c.skills_keywords = (form.get("skills_keywords") or "").strip()
     c.salario_minimo = max(0, _to_int(form.get("salario_minimo"), 0))
