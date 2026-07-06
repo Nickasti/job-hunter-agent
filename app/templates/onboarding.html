@@ -1,46 +1,219 @@
-{% extends "base.html" %}
-{% block title %}Onboarding · Job Hunter{% endblock %}
-{% block body %}
-<h1>Configura il tuo agente</h1>
-<p class="muted">Ciao {{ user.email }} — completa i 3 passi, poi attiva le notifiche.</p>
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Onboarding · Job Hunter</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&family=Fustat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --accent:#0e1311; --black:#000; --gray:#505050; --lightgray:#f8f8f8;
+      --green:rgba(90,225,76,0.89); --dark:#0e1311; --white:#fff;
+      /* Variabili tema-chiaro per il form dei criteri incluso */
+      --f-border:#e5e5e5; --f-bg:#ffffff; --f-check:#c8c8c8; --f-muted:#8a8a8a;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--white);color:var(--black);}
+    a{color:inherit;text-decoration:none;}
+    kbd{font-family:inherit;background:#eee;border-radius:4px;padding:1px 5px;font-size:.8em;}
 
-<div class="card">
-  <h3>1 · Collega Google (Gmail)</h3>
-  <p class="muted">Serve a leggere i tuoi LinkedIn Job Alert. Non crei nessun progetto: usi il client della piattaforma.</p>
-  {% if google_connected %}
-    <span class="ok">✅ Google collegato</span>
-  {% else %}
-    <a class="btn" href="/auth/google/start">Connetti Gmail</a>
-  {% endif %}
-</div>
+    /* ---------------- HERO ---------------- */
+    .hero{position:relative;width:100%;min-height:88vh;overflow:hidden;background:#eef1f0;}
+    .hero-video{position:absolute;top:0;left:50%;transform:translateX(-50%);
+      width:115%;height:115%;object-fit:cover;object-position:top;opacity:0;z-index:0;}
+    .hero-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;
+      background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.15) 45%,rgba(255,255,255,.35) 100%);}
+    .hero-inner{position:relative;z-index:2;}
 
-<div class="card">
-  <h3>2 · Collega Telegram</h3>
-  <p class="muted">Apri il bot e premi Avvia: il collegamento è automatico, nessun bot da creare.</p>
-  {% if telegram_linked %}
-    <span class="ok">✅ Telegram collegato</span>
-  {% else %}
-    <a class="btn" href="{{ deep_link }}" target="_blank" rel="noopener">Apri il bot e premi Avvia</a>
-    <p style="margin-top:12px"
-       hx-get="/onboarding/telegram/status" hx-trigger="load, every 4s" hx-swap="innerHTML">
-      <span class="pending">⏳ In attesa del tuo /start sul bot…</span>
-    </p>
-  {% endif %}
-</div>
+    nav.nav{display:flex;align-items:center;justify-content:space-between;
+      padding:16px 120px;gap:24px;}
+    .logo{font-family:'Schibsted Grotesk';font-weight:600;font-size:24px;letter-spacing:-1.44px;}
+    .menu{display:flex;gap:28px;align-items:center;}
+    .menu a{font-family:'Schibsted Grotesk';font-weight:500;font-size:16px;letter-spacing:-0.2px;color:#111;opacity:.85;}
+    .menu a:hover{opacity:1;}
+    .nav-cta{display:flex;gap:10px;align-items:center;}
+    .btn{display:inline-flex;align-items:center;justify-content:center;height:42px;padding:0 18px;
+      border-radius:10px;font-family:'Schibsted Grotesk';font-weight:600;font-size:15px;cursor:pointer;border:0;}
+    .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,.15);color:#000;}
+    .btn-dark{background:#000;color:#fff;}
+    .btn-accent{background:var(--green);color:#04310a;}
 
-<div class="card">
-  <h3>3 · I tuoi criteri di ricerca</h3>
-  {% set action = "/onboarding/criteria" %}
-  {% include "_criteria_form.html" with context %}
-</div>
+    .hero-content{max-width:900px;margin:60px auto 0;padding:0 24px;text-align:center;
+      display:flex;flex-direction:column;align-items:center;gap:34px;margin-top:10px;}
+    .badge{display:inline-flex;align-items:center;gap:8px;background:var(--white);
+      border-radius:999px;padding:6px 6px 6px 8px;box-shadow:0 4px 16px rgba(0,0,0,.08);
+      font-family:'Inter';font-size:14px;}
+    .badge .tag{display:inline-flex;align-items:center;gap:5px;background:var(--dark);color:#fff;
+      border-radius:999px;padding:4px 10px;font-weight:600;font-size:12px;}
+    .headline{font-family:'Fustat','Inter',sans-serif;font-weight:700;font-size:80px;
+      letter-spacing:-4.8px;line-height:1;margin:0;color:#000;text-shadow:0 2px 30px rgba(255,255,255,.5);}
+    .subtitle{font-family:'Fustat','Inter',sans-serif;font-weight:500;font-size:20px;
+      letter-spacing:-0.4px;color:var(--gray);max-width:640px;margin:0;text-shadow:0 1px 18px rgba(255,255,255,.6);}
 
-<div class="card">
-  <h3>4 · Attiva</h3>
-  <p class="muted">Quando Google e Telegram sono collegati e i criteri salvati, attiva l'agente.</p>
-  <form action="/onboarding/activate" method="post">
-    <button type="submit" {% if not (google_connected and telegram_linked) %}disabled{% endif %}>
-      Attiva e vai alla dashboard
-    </button>
-  </form>
-</div>
-{% endblock %}
+    /* ---------------- CONTENT (onboarding steps) ---------------- */
+    .content{max-width:900px;margin:-60px auto 0;padding:0 24px 60px;position:relative;z-index:3;}
+    .content h2{font-family:'Fustat','Inter',sans-serif;font-weight:700;letter-spacing:-1px;font-size:28px;margin:24px 0 4px;}
+    .card{background:var(--white);border:1px solid #ececec;border-radius:18px;padding:24px;margin:16px 0;
+      box-shadow:0 10px 30px rgba(0,0,0,.06);}
+    .card h3{font-family:'Schibsted Grotesk';font-weight:600;margin:0 0 6px;font-size:18px;}
+    .muted{color:var(--gray);font-size:.92rem;}
+    .ok{color:#1a9e3f;font-weight:600;}
+    .pending{color:#c07a10;font-weight:600;}
+    label{display:block;font-size:.85rem;color:var(--gray);margin:10px 0 4px;}
+    .content input, .content select{width:100%;padding:11px 13px;border-radius:10px;
+      border:1px solid #e2e2e2;background:#fff;color:#111;font-family:'Inter';font-size:.95rem;}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .content button, .content .btn{font-family:'Schibsted Grotesk';}
+    .content button[type=submit]{background:#000;color:#fff;border:0;border-radius:10px;padding:11px 20px;font-weight:600;cursor:pointer;}
+    .content button[disabled]{opacity:.4;cursor:not-allowed;}
+    .step-num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+      border-radius:8px;background:#000;color:#fff;font-size:14px;font-weight:700;margin-right:8px;}
+
+    @media (max-width:860px){
+      nav.nav{padding:16px 20px;}
+      .menu{display:none;}
+      .headline{font-size:44px;letter-spacing:-2px;}
+      .subtitle{font-size:17px;}
+      .grid2{grid-template-columns:1fr;}
+      .content{margin-top:-30px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <video id="hero-video" class="hero-video" muted autoplay playsinline preload="auto"
+           src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260329_050842_be71947f-f16e-4a14-810c-06e83d23ddb5.mp4"></video>
+    <div class="hero-scrim"></div>
+
+    <div class="hero-inner">
+      <nav class="nav">
+        <div class="logo">Logoipsum</div>
+        <div class="menu">
+          <a href="#">Platform</a>
+          <a href="#">Features ⌄</a>
+          <a href="#">Projects</a>
+          <a href="#">Community</a>
+          <a href="#">Contact</a>
+        </div>
+        <div class="nav-cta">
+          <a class="btn btn-ghost" href="/dashboard">Dashboard</a>
+          <form action="/logout" method="post" style="margin:0"><button class="btn btn-dark">Log In</button></form>
+        </div>
+      </nav>
+
+      <div class="hero-content">
+        <div class="badge">
+          <span class="tag">★ New</span>
+          <span>Discover what's possible</span>
+        </div>
+        <h1 class="headline">Transform Data Quickly</h1>
+        <p class="subtitle">Upload your information and get powerful insights right away. Work smarter and achieve goals effortlessly.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ONBOARDING STEPS ===================== -->
+  <main class="content">
+    <h2>Configura il tuo agente</h2>
+    <p class="muted">Ciao {{ user.email }} — completa i 3 passi, poi attiva le notifiche.</p>
+
+    <div class="card">
+      <h3><span class="step-num">1</span>Collega Google (Gmail)</h3>
+      <p class="muted">Serve a leggere i tuoi LinkedIn Job Alert. Non crei nessun progetto: usi il client della piattaforma.</p>
+      {% if google_connected %}
+        <span class="ok">✅ Google collegato</span>
+      {% else %}
+        <a class="btn btn-dark" href="/auth/google/start">Connetti Gmail</a>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3><span class="step-num">2</span>Collega Telegram</h3>
+      <p class="muted">Apri il bot e premi Avvia: il collegamento è automatico, nessun bot da creare.</p>
+      {% if telegram_linked %}
+        <span class="ok">✅ Telegram collegato</span>
+      {% else %}
+        <a class="btn btn-dark" href="{{ deep_link }}" target="_blank" rel="noopener">Apri il bot e premi Avvia</a>
+        <p style="margin-top:12px" hx-get="/onboarding/telegram/status" hx-trigger="load, every 4s" hx-swap="innerHTML">
+          <span class="pending">⏳ In attesa del tuo /start sul bot…</span>
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3><span class="step-num">3</span>I tuoi criteri di ricerca</h3>
+      {% set action = "/onboarding/criteria" %}
+      {% include "_criteria_form.html" with context %}
+    </div>
+
+    <div class="card">
+      <h3><span class="step-num">4</span>Attiva</h3>
+      <p class="muted">Quando Google e Telegram sono collegati e i criteri salvati, attiva l'agente.</p>
+      <form action="/onboarding/activate" method="post">
+        <button type="submit" {% if not (google_connected and telegram_linked) %}disabled{% endif %}>
+          Attiva e vai alla dashboard
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- ===================== VIDEO FADE SYSTEM (no CSS transitions) ===================== -->
+  <script>
+  (function () {
+    const video = document.getElementById('hero-video');
+    if (!video) return;
+    const FADE_MS = 250;
+    const FADE_OUT_LEAD = 0.55;
+    let raf = null;
+    let fadingOut = false;
+
+    function cancelRaf(){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
+
+    function fadeTo(target){
+      cancelRaf(); // ogni nuovo fade annulla i frame in corso (no animazioni in competizione)
+      const start = performance.now();
+      const from = parseFloat(video.style.opacity || '0');
+      function step(now){
+        const t = Math.min(1, (now - start) / FADE_MS);
+        video.style.opacity = String(from + (target - from) * t); // riparte dall'opacità corrente
+        if (t < 1) { raf = requestAnimationFrame(step); } else { raf = null; }
+      }
+      raf = requestAnimationFrame(step);
+    }
+
+    function fadeIn(){ fadingOut = false; fadeTo(1); }
+
+    video.style.opacity = '0';
+    video.addEventListener('loadeddata', fadeIn);
+    video.addEventListener('play', fadeIn);
+
+    video.addEventListener('timeupdate', function(){
+      if (!video.duration) return;
+      const remaining = video.duration - video.currentTime;
+      if (remaining <= FADE_OUT_LEAD && !fadingOut){
+        fadingOut = true;          // impedisce di ri-triggerare il fade-out
+        fadeTo(0);
+      }
+    });
+
+    video.addEventListener('ended', function(){
+      cancelRaf();
+      video.style.opacity = '0';
+      setTimeout(function(){
+        video.currentTime = 0;
+        video.play();
+        fadeIn();
+      }, 100);
+    });
+
+    if (video.readyState >= 2) fadeIn();
+  })();
+  </script>
+</body>
+</html>

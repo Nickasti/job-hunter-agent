@@ -4,22 +4,23 @@
 <style>
   .chkgroup {
     display:flex; flex-wrap:wrap; gap:8px 18px;
-    padding:12px 14px; border:1px solid #334155; border-radius:10px; background:#0b1220;
+    padding:12px 14px; border:1px solid var(--f-border,#334155); border-radius:10px;
+    background:var(--f-bg,#0b1220);
   }
   .chkgroup.scroll { max-height:200px; overflow:auto; }
   .chk { display:inline-flex; align-items:center; gap:8px; cursor:pointer;
          font-size:.9rem; user-select:none; min-width:130px; }
   .chk input { position:absolute; opacity:0; width:0; height:0; }
   .chk .box {
-    width:18px; height:18px; border:2px solid #475569; border-radius:5px;
+    width:18px; height:18px; border:2px solid var(--f-check,#475569); border-radius:5px;
     display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
     transition:background .15s, border-color .15s;
   }
-  .chk input:checked + .box { background:var(--accent); border-color:var(--accent); }
-  .chk input:checked + .box::after { content:"✕"; color:#00131f; font-size:12px; font-weight:800; line-height:1; }
-  .chk input:focus-visible + .box { outline:2px solid var(--accent); outline-offset:2px; }
+  .chk input:checked + .box { background:var(--accent,#38bdf8); border-color:var(--accent,#38bdf8); }
+  .chk input:checked + .box::after { content:"✕"; color:#fff; font-size:12px; font-weight:800; line-height:1; }
+  .chk input:focus-visible + .box { outline:2px solid var(--accent,#38bdf8); outline-offset:2px; }
   .chk-country { flex:1 1 100%; }
-  .chk-country-label { font-size:.8rem; color:var(--muted); margin:6px 0 4px; text-transform:uppercase; letter-spacing:.03em; }
+  .chk-country-label { font-size:.8rem; color:var(--f-muted,#94a3b8); margin:6px 0 4px; text-transform:uppercase; letter-spacing:.03em; }
   .chkgroup-inline { display:flex; flex-wrap:wrap; gap:8px 18px; }
   .field { margin-top:14px; }
 </style>
