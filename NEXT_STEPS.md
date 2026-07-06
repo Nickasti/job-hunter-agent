@@ -66,6 +66,22 @@ profilo, valutandole con **Gemini**. Esiste in due forme nello stesso repo:
 - [ ] Verificare che arrivino notifiche personalizzate e che la dashboard mostri i match
 - [ ] Controllare un run reale: `Actions → job-hunter-cron → Run workflow` (o attendere il cron orario)
 
+### PASSO 7 — Grafica / UI (in corso)
+- [x] **Onboarding** (`/onboarding`): rifatta con hero video a schermo intero, fade JS,
+      titolo "Find Your Path / Find Your Job", sottotitolo Agentic AI, pulsante "Inizia ora".
+- [ ] **DA SISTEMARE — tutta la parte grafica successiva all'onboarding**, ancora nel
+      vecchio stile scuro/base:
+  - [ ] Pagina **configurazione** (`/onboarding/setup`): allineare lo stile alla hero
+        (font, spaziature, coerenza col resto). Ora è un layout chiaro "base", da rifinire.
+  - [ ] **Dashboard** (`/dashboard`): ancora tema scuro `base.html` — da ridisegnare
+        (stato agente, criteri, lista offerte con breakdown, tabella esecuzioni).
+  - [ ] **Login / Registrazione** (`/login`, `/register`): ancora tema scuro `base.html`,
+        da adeguare al nuovo look.
+  - [ ] Rifinire testi/branding: **logo** ("Logoipsum" → nome piattaforma), bottoni nav
+        ("Dashboard" / "Log In" che fa logout — scritte da adattare), stile pulsanti.
+  - [ ] (Opzionale) Video hero a risoluzione più alta o upscale AI (a crediti) se si
+        vuole più nitidezza del file sorgente attuale.
+
 ---
 
 ## 📌 Note operative
