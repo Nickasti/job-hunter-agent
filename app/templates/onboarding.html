@@ -22,11 +22,11 @@
     kbd{font-family:inherit;background:#eee;border-radius:4px;padding:1px 5px;font-size:.8em;}
 
     /* ---------------- HERO ---------------- */
-    .hero{position:relative;width:100%;min-height:88vh;overflow:hidden;background:#eef1f0;}
+    .hero{position:relative;width:100%;min-height:100vh;min-height:100dvh;overflow:hidden;background:#0e1311;}
     .hero-video{position:absolute;top:0;left:50%;transform:translateX(-50%);
-      width:115%;height:115%;object-fit:cover;object-position:top;opacity:0;z-index:0;}
+      width:115%;height:115%;object-fit:cover;object-position:center;opacity:0;z-index:0;}
     .hero-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;
-      background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.15) 45%,rgba(255,255,255,.35) 100%);}
+      background:linear-gradient(180deg,rgba(255,255,255,.5) 0%,rgba(255,255,255,.12) 40%,rgba(255,255,255,0) 78%);}
     .hero-inner{position:relative;z-index:2;}
 
     nav.nav{display:flex;align-items:center;justify-content:space-between;
@@ -131,8 +131,14 @@
     if (!video) return;
     const FADE_MS = 250;
     const FADE_OUT_LEAD = 0.55;
+    const SPEED = 1.8;            // riproduzione più veloce = animazione più viva
     let raf = null;
     let fadingOut = false;
+
+    function applySpeed(){ try { video.playbackRate = SPEED; } catch (e) {} }
+    applySpeed();
+    video.addEventListener('loadedmetadata', applySpeed);
+    video.addEventListener('play', applySpeed);   // alcuni browser resettano la velocità
 
     function cancelRaf(){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
 
