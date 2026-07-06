@@ -1,104 +1,158 @@
-{# Frammento riusabile: form dei criteri con menù a tendina multi-selezione.
-   `action` passato dal chiamante. Richiede in contesto: languages, sel_languages,
-   country_choices, sel_countries, europe (dict), sel_cities. #}
+{# Frammento riusabile: form dei criteri con CASELLE (checkbox) multi-selezione.
+   `action` dal chiamante. Contesto: languages, sel_languages, country_choices,
+   sel_countries, europe (dict), sel_cities. #}
+<style>
+  .chkgroup {
+    display:flex; flex-wrap:wrap; gap:8px 18px;
+    padding:12px 14px; border:1px solid #334155; border-radius:10px; background:#0b1220;
+  }
+  .chkgroup.scroll { max-height:200px; overflow:auto; }
+  .chk { display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+         font-size:.9rem; user-select:none; min-width:130px; }
+  .chk input { position:absolute; opacity:0; width:0; height:0; }
+  .chk .box {
+    width:18px; height:18px; border:2px solid #475569; border-radius:5px;
+    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+    transition:background .15s, border-color .15s;
+  }
+  .chk input:checked + .box { background:var(--accent); border-color:var(--accent); }
+  .chk input:checked + .box::after { content:"✕"; color:#00131f; font-size:12px; font-weight:800; line-height:1; }
+  .chk input:focus-visible + .box { outline:2px solid var(--accent); outline-offset:2px; }
+  .chk-country { flex:1 1 100%; }
+  .chk-country-label { font-size:.8rem; color:var(--muted); margin:6px 0 4px; text-transform:uppercase; letter-spacing:.03em; }
+  .chkgroup-inline { display:flex; flex-wrap:wrap; gap:8px 18px; }
+  .field { margin-top:14px; }
+</style>
+
 <form action="{{ action }}" method="post">
   <p class="muted" style="font-size:.85rem;margin-top:0">
-    Scegli dagli elenchi. Per selezionare <strong>più voci</strong> tieni premuto
-    <kbd>Ctrl</kbd> (su Mac <kbd>Cmd</kbd>) mentre clicchi. Lascia vuoto = indifferente.
+    Spunta le caselle che ti interessano. Lascia vuoto = indifferente.
   </p>
 
-  <div class="grid2">
-    <div>
-      <label>Lingue accettate</label>
-      <select name="languages" multiple size="6">
-        {% for lang in languages %}
-          <option value="{{ lang }}" {% if lang in sel_languages %}selected{% endif %}>{{ lang }}</option>
-        {% endfor %}
-      </select>
+  <!-- 1) Lingue -->
+  <div class="field">
+    <label>Lingue accettate</label>
+    <div class="chkgroup">
+      {% for lang in languages %}
+        <label class="chk">
+          <input type="checkbox" name="languages" value="{{ lang }}" {% if lang in sel_languages %}checked{% endif %}>
+          <span class="box"></span>{{ lang }}
+        </label>
+      {% endfor %}
     </div>
+  </div>
 
-    <div>
-      <label>Skill / keyword (separate da virgola)</label>
-      <input name="skills_keywords" value="{{ criteria.skills_keywords if criteria else '' }}" placeholder="python, sql, crm, marketing">
+  <!-- 2) Stato -->
+  <div class="field">
+    <label>Stato (prima scegli qui)</label>
+    <div class="chkgroup scroll" id="countries-wrap">
+      {% for code, label in country_choices %}
+        <label class="chk">
+          <input type="checkbox" name="countries" value="{{ code }}" {% if code in sel_countries %}checked{% endif %}>
+          <span class="box"></span>{{ label }}
+        </label>
+      {% endfor %}
     </div>
+  </div>
 
-    <div>
-      <label>Stato (prima scegli qui)</label>
-      <select name="countries" id="sel-countries" multiple size="8">
-        {% for code, label in country_choices %}
-          <option value="{{ code }}" {% if code in sel_countries %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
+  <!-- 3) Città (cascata) -->
+  <div class="field">
+    <label>Città (compaiono in base agli Stati scelti)</label>
+    <div class="chkgroup scroll" id="cities-wrap"></div>
+    <p class="muted" id="cities-hint" style="font-size:.8rem;margin:6px 0 0">
+      Seleziona prima uno o più Stati per vedere le città.
+    </p>
+  </div>
 
-    <div>
-      <label>Città (compaiono in base agli Stati scelti)</label>
-      <select name="cities" id="sel-cities" multiple size="8">
-        {# Popolato via JavaScript dalla cascata #}
-      </select>
-      <p class="muted" id="cities-hint" style="font-size:.8rem;margin:6px 0 0">
-        Seleziona prima uno o più Stati per vedere le città.
-      </p>
-    </div>
+  <!-- 4) Skill (ora sotto Stato/Città) -->
+  <div class="field">
+    <label>Skill / keyword (separate da virgola)</label>
+    <input name="skills_keywords" value="{{ criteria.skills_keywords if criteria else '' }}" placeholder="python, sql, crm, marketing">
+  </div>
 
-    <div>
-      <label>Tipo di contratto</label>
-      <input name="contratto_pref" value="{{ criteria.contratto_pref if criteria else '' }}" placeholder="stage, internship, junior">
-    </div>
+  <!-- 5) Contratto -->
+  <div class="field">
+    <label>Tipo di contratto</label>
+    <input name="contratto_pref" value="{{ criteria.contratto_pref if criteria else '' }}" placeholder="stage, internship, junior">
+  </div>
 
+  <!-- 6) Retribuzione / Durata / Soglia -->
+  <div class="grid2" style="margin-top:14px">
     <div>
       <label>Retribuzione minima (EUR/mese, 0 = indifferente)</label>
       <input type="number" name="salario_minimo" min="0" value="{{ criteria.salario_minimo if criteria else 0 }}">
     </div>
-
     <div>
       <label>Durata minima (mesi, 0 = indifferente)</label>
       <input type="number" name="durata_minima" min="0" value="{{ criteria.durata_minima if criteria else 0 }}">
     </div>
-
     <div>
       <label>Soglia notifica (0-100)</label>
       <input type="number" name="soglia_notifica" min="0" max="100" value="{{ criteria.soglia_notifica if criteria else 55 }}">
     </div>
   </div>
 
-  <div style="margin-top:16px"><button type="submit">Salva criteri</button></div>
+  <div style="margin-top:18px"><button type="submit">Salva criteri</button></div>
 </form>
 
 <script>
 (function () {
   const EUROPE = {{ europe | tojson }};
-  const PRESELECTED_CITIES = {{ sel_cities | tojson }};
-  const countriesEl = document.getElementById('sel-countries');
-  const citiesEl = document.getElementById('sel-cities');
+  const checkedCities = new Set({{ sel_cities | tojson }});
+  const countriesWrap = document.getElementById('countries-wrap');
+  const citiesWrap = document.getElementById('cities-wrap');
   const hintEl = document.getElementById('cities-hint');
-  if (!countriesEl || !citiesEl) return;
+  if (!countriesWrap || !citiesWrap) return;
 
-  function rebuildCities() {
-    // Preserva le città già selezionate (dall'utente e dal salvataggio precedente)
-    const keep = new Set(
-      Array.from(citiesEl.selectedOptions).map(o => o.value).concat(PRESELECTED_CITIES)
-    );
-    const chosen = Array.from(countriesEl.selectedOptions).map(o => o.value);
-    citiesEl.innerHTML = '';
+  // Tiene aggiornato l'insieme delle città spuntate anche quando ricostruiamo.
+  citiesWrap.addEventListener('change', function (e) {
+    if (e.target && e.target.name === 'cities') {
+      e.target.checked ? checkedCities.add(e.target.value) : checkedCities.delete(e.target.value);
+    }
+  });
+
+  function chosenCountries() {
+    return Array.from(countriesWrap.querySelectorAll('input[name="countries"]:checked')).map(i => i.value);
+  }
+
+  function rebuild() {
+    const chosen = chosenCountries();
+    citiesWrap.innerHTML = '';
     chosen.forEach(code => {
       const country = EUROPE[code];
       if (!country) return;
-      const group = document.createElement('optgroup');
-      group.label = country.label;
+      const group = document.createElement('div');
+      group.className = 'chk-country';
+      const h = document.createElement('div');
+      h.className = 'chk-country-label';
+      h.textContent = country.label;
+      group.appendChild(h);
+      const inline = document.createElement('div');
+      inline.className = 'chkgroup-inline';
       country.cities.forEach(city => {
-        const opt = document.createElement('option');
-        opt.value = city.id;
-        opt.textContent = city.label;
-        if (keep.has(city.id)) opt.selected = true;
-        group.appendChild(opt);
+        const label = document.createElement('label');
+        label.className = 'chk';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'cities';
+        input.value = city.id;
+        if (checkedCities.has(city.id)) input.checked = true;
+        const span = document.createElement('span');
+        span.className = 'box';
+        label.appendChild(input);
+        label.appendChild(span);
+        label.appendChild(document.createTextNode(' ' + city.label));
+        inline.appendChild(label);
       });
-      citiesEl.appendChild(group);
+      group.appendChild(inline);
+      citiesWrap.appendChild(group);
     });
     hintEl.style.display = chosen.length ? 'none' : 'block';
   }
 
-  countriesEl.addEventListener('change', rebuildCities);
-  rebuildCities(); // popola in base agli Stati già selezionati (modalità modifica)
+  countriesWrap.addEventListener('change', function (e) {
+    if (e.target && e.target.name === 'countries') rebuild();
+  });
+  rebuild(); // modalità modifica: mostra le città degli Stati già spuntati
 })();
 </script>
