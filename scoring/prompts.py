@@ -161,11 +161,22 @@ se scatta una condizione di scarto, lo score finale è 0.
    attinente debole = 8; per nulla attinente = 0.
 5) DURATA + RETRIBUZIONE (max 20): {dur_rule}{sal_rule}
    assegna fino a 10 per durata adeguata e fino a 10 per retribuzione
-   (>= soglia = 10; presente ma sotto soglia = 4-7; non menzionata = 6).
+   (adeguata = 10; presente ma bassa = 4-7; non menzionata = 6).
+
+RETRIBUZIONE — REGOLE ANTI-ERRORE (importantissime):
+- Riporta la cifra ESATTAMENTE come scritta nell'annuncio, con il PERIODO GIUSTO.
+- In Italia gli stipendi sono quasi sempre ANNUI LORDI (RAL): es. "28.000 EUR"
+  significa 28.000 EUR/ANNO, NON al mese. NON assumere mai "al mese".
+- Se il periodo non è esplicito, indica "/anno (RAL, da verificare)" se la cifra
+  è tipica di uno stipendio annuo (> ~2.000), altrimenti lascia il periodo generico.
+- NON inventare cifre: se l'annuncio non indica una retribuzione, scrivi
+  esattamente "Non menzionata". Non dedurre né stimare importi.
 
 REGOLE:
 - Se scatta una condizione di SCARTA, "score": 0 e spiega in "why_check".
 - Sii prudente sui profili senior/full-time permanenti: scarta.
+- Non inventare dati assenti (durata, retribuzione, lingua...): usa
+  "Non specificata"/"Non menzionata". Attieniti SOLO al testo dell'annuncio.
 - Rispondi in ITALIANO nei campi testuali.
 - La soglia di notifica del candidato è {soglia} (solo informativa per te).
 
@@ -175,7 +186,7 @@ Formato JSON OBBLIGATORIO (tutti i campi):
   "language": "<lingua rilevata>",
   "contract_type": "<descrizione breve>",
   "duration": "<es. '6 mesi' | 'Non specificata'>",
-  "salary": "<es. '1000 EUR/mese' | 'Non menzionata'>",
+  "salary": "<es. '28.000 EUR/anno (RAL)' | '1.200 EUR/mese' | 'Non menzionata'>",
   "skills_match": "<forte|medio|debole|off>",
   "location_ok": <true|false>,
   "match_reasons": "<1-2 frasi>",
