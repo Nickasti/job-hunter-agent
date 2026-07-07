@@ -1,0 +1,19 @@
+name: veredai-keepalive
+
+# Il piano free di Render "addormenta" il servizio dopo 15 minuti di
+# inattività (il prossimo che apre il sito aspetta 30-60s di risveglio).
+# Questo workflow fa un ping leggero ogni 10 minuti su /healthz (nessuna
+# autenticazione, nessun DB, nessuna chiamata Gemini) per tenerlo sveglio.
+# Il cron orario "job-hunter-cron" resta separato: quello fa il ciclo vero.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /healthz per evitare il cold start
+        run: curl -sS --max-time 60 "https://veredai.onrender.com/healthz" || true
