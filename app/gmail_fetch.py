@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 from app import config_web
 from app.oauth_google import credentials_from_refresh
 from models import Job
-from sources.gmail_source import _extract_html, _parse_linkedin_email
+from sources.gmail_source import _enrich, _extract_html, _parse_linkedin_email
 
 log = logging.getLogger("app.gmail_fetch")
 
@@ -60,7 +60,15 @@ def fetch_new_jobs(refresh_token: str, last_epoch: int) -> tuple[list[Job], int]
                 j.source = "gmail"
                 jobs.append(j)
 
-    return _dedup(jobs), newest + 1
+    jobs = _dedup(jobs)
+    # Arricchimento: scarica la pagina pubblica dell'annuncio per recuperare
+    # descrizione e LOCALITÀ reali (molte email non riportano la città).
+    if config_web.ENABLE_LINKEDIN_ENRICH and jobs:
+        try:
+            _enrich(jobs)
+        except Exception as exc:  # noqa: BLE001 — l'arricchimento non deve bloccare il ciclo
+            log.warning("Enrichment fallito: %s", exc)
+    return jobs, newest + 1
 
 
 def _list_ids(service, query: str) -> list[str]:

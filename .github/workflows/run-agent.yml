@@ -28,7 +28,8 @@ jobs:
           fi
           # --max-time alto per tollerare il cold start del free tier Render.
           # --retry per riprovare se il dyno si sta risvegliando.
+          # --max-time alto: l'arricchimento LinkedIn allunga il ciclo.
           curl -sS --fail-with-body \
-               --max-time 180 --retry 3 --retry-delay 20 --retry-connrefused \
+               --max-time 300 --retry 2 --retry-delay 20 --retry-connrefused \
                -X POST "$RUN_CYCLE_URL" \
                -H "Authorization: Bearer $RUN_CYCLE_TOKEN"

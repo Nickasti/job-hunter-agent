@@ -79,7 +79,7 @@ LINKEDIN_SENDERS = [
     "jobs-listings@linkedin.com",
 ]
 LINKEDIN_LOOKBACK_DAYS = _get_int("LINKEDIN_LOOKBACK_DAYS", 2)
-ENABLE_LINKEDIN_ENRICH = (_get("ENABLE_LINKEDIN_ENRICH", "false") or "").lower() in ("1", "true", "yes")
+ENABLE_LINKEDIN_ENRICH = (_get("ENABLE_LINKEDIN_ENRICH", "true") or "").lower() in ("1", "true", "yes")
 
 
 def missing_required() -> list[str]:

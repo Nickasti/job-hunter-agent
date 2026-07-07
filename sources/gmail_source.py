@@ -12,6 +12,7 @@ opzionalmente arricchito scaricando la pagina pubblica dell'annuncio.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import re
 import time
@@ -227,28 +228,67 @@ def _company_location_from(context: str, title: str) -> tuple[str, str]:
 def _enrich(jobs: list[Job]) -> None:
     """
     Scarica la pagina pubblica di ogni annuncio LinkedIn per arricchire la
-    descrizione (migliora lo scoring). Rate limit conservativo: 1 req / 5s,
-    nessun login, User-Agent realistico. Rispetta i ToS sulle pagine pubbliche.
+    descrizione E la località (fondamentali per lo scoring: molte email non
+    riportano la città). Nessun login, User-Agent realistico, rate limit
+    conservativo. Se LinkedIn inizia a bloccare (troppi fallimenti di fila),
+    l'arricchimento si interrompe per non sprecare tempo.
     """
     headers = {"User-Agent": config.USER_AGENT, "Accept-Language": "en,it,pt"}
+    consecutive_fail = 0
     for job in jobs:
         if "/jobs/view/" not in job.url:
             continue
         try:
             r = requests.get(job.url, headers=headers, timeout=config.HTTP_TIMEOUT)
             if r.status_code == 200:
+                consecutive_fail = 0
                 soup = BeautifulSoup(r.text, "lxml")
                 desc = soup.find("div", class_=re.compile("description__text|show-more-less-html"))
-                if desc:
-                    job.description = _clean(desc.get_text(" "))[:6000]
-                # Località più precisa se presente.
-                loc = soup.find(class_=re.compile("topcard__flavor--bullet"))
-                if loc and not job.location:
-                    job.location = _clean(loc.get_text())
+                text = _clean(desc.get_text(" "))[:6000] if desc else ""
+
+                loc_txt = ""
+                bullet = soup.find(class_=re.compile("topcard__flavor--bullet"))
+                if bullet:
+                    loc_txt = _clean(bullet.get_text())
+
+                # JSON-LD: fonte più affidabile per la località (città/regione/paese).
+                ld = soup.find("script", type="application/ld+json")
+                if ld and ld.string:
+                    try:
+                        data = json.loads(ld.string)
+                        jl = data.get("jobLocation") or {}
+                        if isinstance(jl, list):
+                            jl = jl[0] if jl else {}
+                        addr = jl.get("address", {}) if isinstance(jl, dict) else {}
+                        ld_loc = ", ".join(
+                            p for p in (
+                                addr.get("addressLocality"),
+                                addr.get("addressRegion"),
+                                addr.get("addressCountry"),
+                            ) if p
+                        )
+                        if ld_loc:
+                            loc_txt = loc_txt or ld_loc
+                            # Inietta la località nel testo: così pre-filtro e Gemini
+                            # la "vedono" sempre, anche se l'email non la riportava.
+                            text = (text + " | Località: " + ld_loc).strip()
+                    except (ValueError, TypeError, KeyError):
+                        pass
+
+                if text:
+                    job.description = text
+                if loc_txt:
+                    job.location = loc_txt
             else:
+                consecutive_fail += 1
                 log.debug("LinkedIn enrich %s → HTTP %s", job.url, r.status_code)
         except requests.RequestException as exc:
+            consecutive_fail += 1
             log.debug("Enrich fallito per %s: %s", job.url, exc)
+
+        if consecutive_fail >= 6:
+            log.warning("Enrichment interrotto: troppi fallimenti consecutivi (LinkedIn blocca?).")
+            break
         time.sleep(config.LINKEDIN_REQUEST_INTERVAL)
 
 
