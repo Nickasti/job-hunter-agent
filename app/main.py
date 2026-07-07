@@ -40,7 +40,17 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(
 log = logging.getLogger("app.main")
 
 app = FastAPI(title="VeredAI platform")
-app.add_middleware(SessionMiddleware, secret_key=config_web.SESSION_SECRET, https_only=False)
+# Cookie di sessione: flag "Secure" in produzione (HTTPS) → il cookie non viaggia
+# mai in chiaro. In locale (http) resta disattivo per non rompere il dev.
+_https_only = config_web.PUBLIC_BASE_URL.startswith("https")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=config_web.SESSION_SECRET,
+    https_only=_https_only,
+    same_site="lax",
+)
+if config_web.SESSION_SECRET == "dev-insecure-change-me":
+    log.warning("SESSION_SECRET è al valore di default: impostane uno forte in produzione!")
 templates = Jinja2Templates(directory=str(config_web.BASE_DIR / "app" / "templates"))
 
 
