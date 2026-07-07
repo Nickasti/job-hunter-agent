@@ -42,6 +42,8 @@ SESSION_SECRET = _get("SESSION_SECRET", "dev-insecure-change-me")
 MASTER_KEY = _get("MASTER_KEY")
 # Bearer token per proteggere POST /api/run-cycle.
 RUN_CYCLE_TOKEN = _get("RUN_CYCLE_TOKEN", "dev-run-token")
+# Email dell'amministratore: solo questo utente (loggato) può vedere /admin.
+ADMIN_EMAIL = (_get("ADMIN_EMAIL", "niko.asti@gmail.com") or "").lower()
 
 # ------------------------------------------------------------------ URL pubblico
 # URL pubblico dell'app (assegnato da Render/Railway/Fly). Serve per il

@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -34,7 +34,15 @@ from app.auth import (
 )
 from app.cycle import run_cycle
 from app.db import get_session, init_db
-from app.models_db import RunLog, UserCriteria, UserGoogleToken, UserJob, UserMatch, UserTelegram
+from app.models_db import (
+    RunLog,
+    User,
+    UserCriteria,
+    UserGoogleToken,
+    UserJob,
+    UserMatch,
+    UserTelegram,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 log = logging.getLogger("app.main")
@@ -127,6 +135,8 @@ def register(
             request, "register.html", {"error": "Email già registrata."}
         )
     user = create_user(db, email, password)
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
     login_session(request, user)
     return _redirect("/onboarding/setup")
 
@@ -148,6 +158,8 @@ def login(
         return templates.TemplateResponse(
             request, "login.html", {"error": "Credenziali non valide."}
         )
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
     login_session(request, user)
     return _redirect("/dashboard")
 
@@ -352,6 +364,7 @@ def dashboard(request: Request, db: Session = Depends(get_session)):
             "criteria": user.criteria,
             "rows": rows,
             "logs": logs,
+            "is_admin": user.email == config_web.ADMIN_EMAIL,
             **_criteria_ctx(user.criteria),
         },
     )
@@ -365,6 +378,47 @@ def toggle_active(request: Request, db: Session = Depends(get_session)):
     user.is_active = not user.is_active
     db.commit()
     return _redirect("/dashboard")
+
+
+# ============================================================ admin
+@app.get("/admin", response_class=HTMLResponse)
+def admin(request: Request, db: Session = Depends(get_session)):
+    """Elenco utenti + stato + ultimo accesso. Solo per l'ADMIN_EMAIL loggato."""
+    user = _require_login(request, db)
+    if not user:
+        return _redirect("/login")
+    if user.email != config_web.ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="Accesso riservato all'amministratore.")
+
+    def _count(model, uid):
+        return db.scalar(select(func.count()).select_from(model).where(model.user_id == uid)) or 0
+
+    users = db.scalars(select(User).order_by(User.created_at.desc())).all()
+    rows = []
+    for u in users:
+        rows.append({
+            "u": u,
+            "google": db.get(UserGoogleToken, u.id) is not None,
+            "telegram": bool(u.telegram and u.telegram.chat_id),
+            "jobs": _count(UserJob, u.id),
+            "matches": db.scalar(
+                select(func.count()).select_from(UserMatch)
+                .where(UserMatch.user_id == u.id, UserMatch.score > 0)
+            ) or 0,
+            "notified": db.scalar(
+                select(func.count()).select_from(UserMatch)
+                .where(UserMatch.user_id == u.id, UserMatch.notificato_at.isnot(None))
+            ) or 0,
+        })
+    stats = {
+        "total": len(users),
+        "active": sum(1 for u in users if u.is_active),
+        "connected": sum(1 for r in rows if r["google"] and r["telegram"]),
+        "logged": sum(1 for u in users if u.last_login_at),
+    }
+    return templates.TemplateResponse(
+        request, "admin.html", {"request": request, "rows": rows, "stats": stats},
+    )
 
 
 # ============================================================ Telegram webhook

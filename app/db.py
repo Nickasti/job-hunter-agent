@@ -57,6 +57,9 @@ def _ensure_columns() -> None:
             "cities": "TEXT DEFAULT ''",
             "cities_custom": "TEXT DEFAULT ''",
         },
+        "users": {
+            "last_login_at": "TIMESTAMPTZ",
+        },
     }
     insp = inspect(engine)
     with engine.begin() as conn:

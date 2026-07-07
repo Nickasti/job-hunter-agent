@@ -83,6 +83,7 @@
       <span>VeredAI</span>
     </a>
     <div class="nav-cta">
+      {% if is_admin %}<a class="btn btn-ghost" href="/admin">Admin</a>{% endif %}
       <a class="btn btn-ghost" href="/onboarding/setup">Setup</a>
       <form action="/logout" method="post" style="margin:0"><button class="btn btn-dark">Esci</button></form>
     </div>
