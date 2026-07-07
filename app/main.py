@@ -39,7 +39,7 @@ from app.models_db import RunLog, UserCriteria, UserGoogleToken, UserJob, UserMa
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 log = logging.getLogger("app.main")
 
-app = FastAPI(title="job-hunter platform")
+app = FastAPI(title="VeredAI platform")
 app.add_middleware(SessionMiddleware, secret_key=config_web.SESSION_SECRET, https_only=False)
 templates = Jinja2Templates(directory=str(config_web.BASE_DIR / "app" / "templates"))
 
