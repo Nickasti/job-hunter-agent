@@ -66,21 +66,16 @@ profilo, valutandole con **Gemini**. Esiste in due forme nello stesso repo:
 - [ ] Verificare che arrivino notifiche personalizzate e che la dashboard mostri i match
 - [ ] Controllare un run reale: `Actions → job-hunter-cron → Run workflow` (o attendere il cron orario)
 
-### PASSO 7 — Grafica / UI (in corso)
-- [x] **Onboarding** (`/onboarding`): rifatta con hero video a schermo intero, fade JS,
-      titolo "Find Your Path / Find Your Job", sottotitolo Agentic AI, pulsante "Inizia ora".
-- [ ] **DA SISTEMARE — tutta la parte grafica successiva all'onboarding**, ancora nel
-      vecchio stile scuro/base:
-  - [ ] Pagina **configurazione** (`/onboarding/setup`): allineare lo stile alla hero
-        (font, spaziature, coerenza col resto). Ora è un layout chiaro "base", da rifinire.
-  - [ ] **Dashboard** (`/dashboard`): ancora tema scuro `base.html` — da ridisegnare
-        (stato agente, criteri, lista offerte con breakdown, tabella esecuzioni).
-  - [ ] **Login / Registrazione** (`/login`, `/register`): ancora tema scuro `base.html`,
-        da adeguare al nuovo look.
-  - [ ] Rifinire testi/branding: **logo** ("Logoipsum" → nome piattaforma), bottoni nav
-        ("Dashboard" / "Log In" che fa logout — scritte da adattare), stile pulsanti.
-  - [ ] (Opzionale) Video hero a risoluzione più alta o upscale AI (a crediti) se si
-        vuole più nitidezza del file sorgente attuale.
+### PASSO 7 — Grafica / UI ✅ COMPLETATO (brand VeredAI)
+- [x] **Rebranding VeredAI**: logo SVG (chevron su quadrato scuro + barra verde), nome,
+      favicon, palette verde "del tragitto" (vedi memoria veredai-brand-palette).
+- [x] **Onboarding/Home** (`/`): hero video a schermo intero, "Find Your Path / Find Your
+      Job", claim bussola/meta, pulsante "Inizia ora". Landing pubblica per i non loggati.
+- [x] **Setup** (`/onboarding/setup`): tema chiaro sage, accenti/checkbox verdi, bottoni brand.
+- [x] **Dashboard** (`/dashboard`): tema chiaro verde, badge punteggio colorati, criteri, log.
+- [x] **Login / Registrazione**: ridisegnate standalone, sfondo verde forest, card chiara.
+- Font: Fustat (titoli), Schibsted Grotesk (logo/nav/bottoni), Inter (corpo).
+- (Opzionale, non fatto) Video hero a risoluzione più alta o upscale AI (a crediti).
 
 ---
 
