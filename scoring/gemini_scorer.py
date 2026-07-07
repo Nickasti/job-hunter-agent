@@ -55,6 +55,10 @@ class GeminiScorer:
         self._client = None
         self._last_call = 0.0
         self._calls_made = 0
+        # Modello primario + fallback: se la quota del primario si esaurisce (429),
+        # si passa automaticamente al fallback per il resto del ciclo.
+        self._model = config.GEMINI_MODEL
+        self._fallback = getattr(config, "GEMINI_FALLBACK_MODEL", "") or ""
 
     # ------------------------------------------------------------------ client
     def _get_client(self):
@@ -116,7 +120,7 @@ class GeminiScorer:
         for attempt in range(1, config.GEMINI_MAX_RETRIES + 1):
             try:
                 resp = client.models.generate_content(
-                    model=config.GEMINI_MODEL,
+                    model=self._model,
                     contents=user_content,
                     config={
                         "system_instruction": system_instruction,
@@ -131,6 +135,17 @@ class GeminiScorer:
                 msg = str(exc)
                 is_quota = _is_rate_limit(msg)
                 is_transient = is_quota or _is_server_transient(msg)
+
+                # Quota del modello corrente esaurita? Passa al modello di riserva
+                # (la quota gratuita è SEPARATA per ogni modello) e riprova subito.
+                if is_quota and self._fallback and self._model != self._fallback:
+                    log.warning(
+                        "Quota esaurita su %s → passo al modello di riserva %s",
+                        self._model, self._fallback,
+                    )
+                    self._model = self._fallback
+                    continue
+
                 # Ritenta con backoff su quota (429) E su errori server temporanei
                 # (503 UNAVAILABLE, 500, "overloaded", deadline...).
                 if is_transient and attempt < config.GEMINI_MAX_RETRIES:
@@ -141,10 +156,10 @@ class GeminiScorer:
                     time.sleep(delay)
                     delay = min(delay * 2, 60)
                     continue
-                # Retry esauriti: se è quota, abortiamo (slitta al prossimo run);
-                # se è un 503 persistente, saltiamo solo questo job.
+                # Retry esauriti: se è quota (anche il fallback saturo), abortiamo
+                # (slitta al prossimo run); se è un 503 persistente, saltiamo il job.
                 if is_quota:
-                    log.error("Gemini quota esaurita dopo %s tentativi.", attempt)
+                    log.error("Gemini quota esaurita (anche fallback) dopo %s tentativi.", attempt)
                     raise QuotaExhausted(msg) from exc
                 log.error("Errore Gemini non recuperabile: %s", msg)
                 raise

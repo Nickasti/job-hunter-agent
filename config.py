@@ -48,6 +48,9 @@ def _get_float(name: str, default: float) -> float:
 # ---------------------------------------------------------------- Gemini
 GEMINI_API_KEY = _get("GEMINI_API_KEY")
 GEMINI_MODEL = _get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+# Modello di riserva: quota gratuita SEPARATA per modello. Se il primario si
+# esaurisce (429), lo scorer passa a questo per il resto del ciclo.
+GEMINI_FALLBACK_MODEL = _get("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash")
 GEMINI_MIN_INTERVAL = _get_float("GEMINI_MIN_INTERVAL", 4.5)
 GEMINI_MAX_RETRIES = _get_int("GEMINI_MAX_RETRIES", 5)
 GEMINI_MAX_CALLS_PER_RUN = _get_int("GEMINI_MAX_CALLS_PER_RUN", 80)
