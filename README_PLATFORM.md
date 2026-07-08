@@ -147,12 +147,21 @@ ora fa solo `curl` verso l'endpoint. Nessuna logica applicativa nel YAML.
   `HttpOnly + Secure` in HTTPS.
 - Endpoint interni protetti da bearer (`/api/run-cycle`) o secret header (webhook Telegram).
 - Nessun segreto nel repo pubblico: tutto in env var / cifrato nel DB.
-- TODO opzionali: rate-limit login/registrazione, verifica email.
+- TODO opzionali: rate-limit login/registrazione.
 
 **Admin (`/admin`):** visibile solo all'utente loggato con email `ADMIN_EMAIL`. Mostra
 elenco utenti, stato, Gmail/Telegram collegati, **ultimo accesso** (`last_login_at`,
 aggiornato a ogni login), n. offerte/notificate. Il pulsante "Admin" appare in dashboard
 solo per l'admin.
+
+**Recupero password (`/forgot-password`, `/reset-password`):** token monouso (hash
+sha256), scadenza 1h (`PASSWORD_RESET_TTL_MINUTES`), risposta identica esista o meno
+l'account (no account enumeration). Invio email via **Brevo API** (HTTPS, gratis 300
+email/giorno) — **non SMTP diretto**: verificato che Gmail SMTP (porta 587) da Render
+free tier è inaffidabile (fallimenti intermittenti "Network is unreachable" e timeout,
+0/5 invii riusciti nei test). Serve `BREVO_API_KEY` + un mittente verificato su Brevo
+(account gratuito, nessuna carta). Endpoint diagnostico `/api/test-email` (bearer)
+per verificare la config in produzione.
 
 ---
 

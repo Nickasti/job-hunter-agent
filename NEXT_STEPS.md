@@ -57,12 +57,22 @@ profilo, valutandole con **Gemini**. Esiste in due forme nello stesso repo:
       (verificato con test di cookie falsificato: ora RIFIUTATO). `TELEGRAM_WEBHOOK_SECRET` forte.
 - [x] Cookie sessione `HttpOnly + Secure` in HTTPS.
 - [x] Password bcrypt, token Google cifrati Fernet, segreti solo in env.
-- [ ] (Opzionale) rate-limit login/registrazione, verifica email.
+- [ ] (Opzionale) rate-limit login/registrazione.
 
 ### ADMIN ✅ (fatto)
 - [x] Pagina **/admin** (visibile solo all'utente loggato con `ADMIN_EMAIL`, default
       niko.asti@gmail.com): elenco utenti, stato, Gmail/Telegram, **ultimo accesso**
       (`last_login_at` tracciato a ogni login), n. offerte/notificate. Link "Admin" in dashboard.
+
+### RECUPERO PASSWORD ✅ (fatto)
+- [x] `/forgot-password` → `/reset-password`: token monouso, scadenza 1h, anti-enumeration.
+- [x] Invio email tramite **Brevo API** (HTTPS, gratis, no carta) — **SMTP diretto
+      (Gmail) scartato**: verificato inaffidabile da Render free tier (porta 587
+      bloccata/instabile, 0/5 invii riusciti nei test; Brevo 5/5 riusciti).
+      Richiede `BREVO_API_KEY` + mittente verificato su Brevo.
+- [x] Endpoint diagnostico `/api/test-email` (bearer) per verificare la config email.
+- [x] Testato end-to-end in produzione: email ricevuta, link cliccato, password
+      reimpostata con successo.
 
 ### PASSO 6 — Collaudo con utenti reali
 - [ ] Aggiungere le email dei 2-3 tester come **Utenti di test** in Google Cloud
