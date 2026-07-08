@@ -21,29 +21,33 @@ log = logging.getLogger("app.mailer")
 
 
 def send_email(to: str, subject: str, html_body: str) -> bool:
-    if not config_web.SMTP_USER or not config_web.SMTP_PASSWORD:
-        log.warning(
-            "SMTP non configurato: email NON inviata (solo log). Destinatario=%s oggetto=%s",
-            to, subject,
-        )
-        log.info("Contenuto email (dev fallback):\n%s", html_body)
-        return False
+    ok, _detail = send_email_diag(to, subject, html_body)
+    return ok
 
-    msg = MIMEText(html_body, "html", "utf-8")
-    msg["Subject"] = subject
-    msg["From"] = config_web.SMTP_FROM or config_web.SMTP_USER
-    msg["To"] = to
+
+def send_email_diag(to: str, subject: str, html_body: str) -> tuple[bool, str]:
+    """Come send_email, ma ritorna anche il dettaglio dell'esito (per diagnosi)."""
+    if not config_web.SMTP_USER or not config_web.SMTP_PASSWORD:
+        msg = "SMTP non configurato (SMTP_USER/SMTP_PASSWORD mancanti): email NON inviata (solo log)."
+        log.warning("%s Destinatario=%s oggetto=%s", msg, to, subject)
+        log.info("Contenuto email (dev fallback):\n%s", html_body)
+        return False, msg
+
+    msg_obj = MIMEText(html_body, "html", "utf-8")
+    msg_obj["Subject"] = subject
+    msg_obj["From"] = config_web.SMTP_FROM or config_web.SMTP_USER
+    msg_obj["To"] = to
 
     try:
         with smtplib.SMTP(config_web.SMTP_HOST, config_web.SMTP_PORT, timeout=20) as server:
             server.starttls()
             server.login(config_web.SMTP_USER, config_web.SMTP_PASSWORD)
-            server.sendmail(config_web.SMTP_FROM or config_web.SMTP_USER, [to], msg.as_string())
+            server.sendmail(config_web.SMTP_FROM or config_web.SMTP_USER, [to], msg_obj.as_string())
         log.info("Email inviata a %s: %s", to, subject)
-        return True
+        return True, "inviata con successo"
     except (smtplib.SMTPException, OSError) as exc:
         log.error("Invio email fallito verso %s: %s", to, exc)
-        return False
+        return False, f"{type(exc).__name__}: {exc}"
 
 
 def build_reset_email(reset_url: str, ttl_minutes: int) -> str:

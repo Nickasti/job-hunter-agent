@@ -600,6 +600,24 @@ def api_run_cycle(authorization: str = Header(default="")):
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
+@app.post("/api/test-email")
+def api_test_email(to: str, authorization: str = Header(default="")):
+    """Diagnostica invio SMTP (bearer). Utile per verificare la config email."""
+    _check_bearer(authorization)
+    smtp_configured = bool(config_web.SMTP_USER and config_web.SMTP_PASSWORD)
+    ok, detail = mailer.send_email_diag(
+        to, "VeredAI — Email di test", "<p>Email di prova dalla piattaforma VeredAI.</p>"
+    )
+    return {
+        "ok": ok,
+        "detail": detail,
+        "smtp_configured": smtp_configured,
+        "smtp_user": config_web.SMTP_USER,
+        "smtp_host": config_web.SMTP_HOST,
+        "smtp_port": config_web.SMTP_PORT,
+    }
+
+
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
