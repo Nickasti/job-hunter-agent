@@ -44,21 +44,25 @@ profilo, valutandole con **Gemini**. Esiste in due forme nello stesso repo:
 
 ## ⏳ DA FARE (per andare live)
 
-### PASSO 3 — Render ✅ COMPLETATO
-- [x] Account Render creato, Blueprint applicato, env var inserite
-- [x] App live su **https://job-hunter-platform.onrender.com** (healthz ok)
-- [x] `POST /api/run-cycle` verificato con bearer token (ok:true, DB Neon raggiunto)
+### PASSO 3-5 — Deploy / cron ✅ COMPLETATO
+- [x] App **LIVE su https://veredai.onrender.com** (Render free; migrata dal vecchio
+      `job-hunter-platform.onrender.com`, poi eliminato — stesso DB Neon).
+- [x] `PUBLIC_BASE_URL`, redirect URI Google, webhook Telegram, secret GitHub
+      `RUN_CYCLE_URL`/`RUN_CYCLE_TOKEN` tutti allineati al dominio veredai.
+- [x] Cron orario `job-hunter-cron` (curl → /api/run-cycle) operativo.
+- [x] **Keepalive** `veredai-keepalive`: ping /healthz ogni 10 min (evita il cold start free tier).
 
-### PASSO 4 — Finalizzazione ✅ COMPLETATO
-- [x] `PUBLIC_BASE_URL` impostato su Render (`https://job-hunter-platform.onrender.com`)
-- [x] Redirect URI Google già registrato correttamente
-- [x] Webhook Telegram registrato e verificato (getWebhookInfo: nessun errore)
-      (fix: TELEGRAM_WEBHOOK_SECRET sanitizzato al charset ammesso da Telegram)
+### SICUREZZA ✅ (fatto)
+- [x] Fix critico: `SESSION_SECRET` era rimasto al default pubblico → impostato forte su Render
+      (verificato con test di cookie falsificato: ora RIFIUTATO). `TELEGRAM_WEBHOOK_SECRET` forte.
+- [x] Cookie sessione `HttpOnly + Secure` in HTTPS.
+- [x] Password bcrypt, token Google cifrati Fernet, segreti solo in env.
+- [ ] (Opzionale) rate-limit login/registrazione, verifica email.
 
-### PASSO 5 — Cron su GitHub Actions ✅ COMPLETATO
-- [x] Secret `RUN_CYCLE_URL` e `RUN_CYCLE_TOKEN` impostati nel repo
-- [x] Workflow `job-hunter-cron` riattivato
-- [x] Run di prova: **success** (7s) — il ciclo orario è operativo
+### ADMIN ✅ (fatto)
+- [x] Pagina **/admin** (visibile solo all'utente loggato con `ADMIN_EMAIL`, default
+      niko.asti@gmail.com): elenco utenti, stato, Gmail/Telegram, **ultimo accesso**
+      (`last_login_at` tracciato a ogni login), n. offerte/notificate. Link "Admin" in dashboard.
 
 ### PASSO 6 — Collaudo con utenti reali
 - [ ] Aggiungere le email dei 2-3 tester come **Utenti di test** in Google Cloud

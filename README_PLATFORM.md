@@ -1,12 +1,15 @@
-# 🌐 Job Hunter — Piattaforma web multi-utente
+# 🧭 VeredAI — Piattaforma web multi-utente
 
-Versione multi-utente dell'agente: ogni persona si registra, collega **il proprio
-Gmail e Telegram**, imposta **i propri criteri**, e riceve notifiche personalizzate.
-Pensata per un test con 2-3 persone.
+**LIVE: https://veredai.onrender.com**
 
-> ℹ️ La versione **single-user** (script `main.py` + `companies.yaml` +
-> `sources/company_scraper.py`) resta nel repo, **inutilizzata**, pronta per
-> reintrodurre lo scraping in futuro. Vedi [README.md](README.md).
+Piattaforma multi-utente (brand **VeredAI**): ogni persona si registra, collega **il
+proprio Gmail e Telegram**, imposta **i propri criteri**, e riceve notifiche
+personalizzate su offerte di lavoro. Pensata per un test con 2-3 persone.
+
+> ℹ️ Il repo GitHub resta `Nickasti/job-hunter-agent`. La versione **single-user**
+> (script `main.py` + `companies.yaml` + `sources/company_scraper.py`) resta nel repo,
+> **inutilizzata**, pronta per reintrodurre lo scraping. Vedi [README.md](README.md).
+> Palette/font del brand: memoria `veredai-brand-palette`.
 
 ## Architettura
 
@@ -90,19 +93,25 @@ Nel progetto Google Cloud (Gmail API già abilitata):
 
 ## 5) Deploy su Render
 
-1. <https://render.com> → **New → Blueprint** → seleziona questo repo (usa `render.yaml`).
-2. Render crea il web service `job-hunter-platform`. Compila le env `sync:false`
-   nella dashboard: `DATABASE_URL`, `MASTER_KEY`, `RUN_CYCLE_TOKEN`,
-   `GOOGLE_CLIENT_ID/SECRET`, `TELEGRAM_BOT_TOKEN/USERNAME`, `GEMINI_API_KEY`.
-   - Genera `MASTER_KEY`:
-     `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`
-3. Primo deploy → ottieni l'URL pubblico (es. `https://job-hunter-platform.onrender.com`).
-4. Imposta `PUBLIC_BASE_URL` con quell'URL e **redeploy**.
-5. Aggiungi il redirect URI Google (punto 3.2) con lo stesso dominio, poi registra
-   il webhook Telegram (punto 4.3).
+1. <https://render.com> → **New → Web Service** → connetti questo repo.
+   - **Build**: `pip install -r requirements-web.txt` · **Start**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path**: `/healthz` · **Name**: scegli lo slug definitivo (es. `veredai`),
+     perché l'URL `*.onrender.com` **non è modificabile dopo** (rinominare il "Name" da
+     Settings NON cambia l'URL).
+2. Compila le **Environment Variables** (tutte obbligatorie tranne dove indicato):
+   `DATABASE_URL`, `MASTER_KEY`, `RUN_CYCLE_TOKEN`, `GOOGLE_CLIENT_ID/SECRET`,
+   `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `GEMINI_API_KEY`, `PUBLIC_BASE_URL`,
+   e — **importanti per la sicurezza** — `SESSION_SECRET` e `TELEGRAM_WEBHOOK_SECRET`
+   (⚠️ creando il servizio a mano NON vengono generati: impostali forti a mano, vedi sotto),
+   più `ADMIN_EMAIL` (email che può vedere /admin; default `niko.asti@gmail.com`).
+   - Genera i segreti:
+     `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` (MASTER_KEY)
+     `python -c "import secrets;print(secrets.token_urlsafe(48))"` (SESSION_SECRET, RUN_CYCLE_TOKEN, TELEGRAM_WEBHOOK_SECRET)
+3. Primo deploy → ottieni l'URL pubblico → imposta `PUBLIC_BASE_URL` con quell'URL e **redeploy**.
+4. Aggiungi il redirect URI Google (`<url>/auth/google/callback`), poi registra il webhook Telegram.
 
-> Render free "dorme" dopo inattività: il cron orario lo risveglia (il workflow
-> usa `--retry` e `--max-time 180` per tollerare il cold start).
+> Render free "dorme" dopo inattività: il workflow **`veredai-keepalive`** fa un ping
+> a `/healthz` ogni 10 min per evitare il cold start; il cron orario fa il ciclo vero.
 
 ---
 
@@ -129,6 +138,34 @@ ora fa solo `curl` verso l'endpoint. Nessuna logica applicativa nel YAML.
 
 ---
 
+## Sicurezza & Admin
+
+**Sicurezza:**
+- Password: hash **bcrypt**. Refresh token Google/segreti utente: **cifrati Fernet** (`MASTER_KEY`).
+- Sessioni: cookie firmato con `SESSION_SECRET` **forte** (⚠️ se resta al default `dev-insecure-change-me`
+  chiunque può forgiare un cookie e impersonare gli utenti — vedi warning nei log all'avvio),
+  `HttpOnly + Secure` in HTTPS.
+- Endpoint interni protetti da bearer (`/api/run-cycle`) o secret header (webhook Telegram).
+- Nessun segreto nel repo pubblico: tutto in env var / cifrato nel DB.
+- TODO opzionali: rate-limit login/registrazione, verifica email.
+
+**Admin (`/admin`):** visibile solo all'utente loggato con email `ADMIN_EMAIL`. Mostra
+elenco utenti, stato, Gmail/Telegram collegati, **ultimo accesso** (`last_login_at`,
+aggiornato a ogni login), n. offerte/notificate. Il pulsante "Admin" appare in dashboard
+solo per l'admin.
+
+---
+
+## Arricchimento & scoring (note)
+- **Arricchimento LinkedIn**: ogni annuncio viene aperto sulla pagina pubblica per recuperare
+  descrizione + località reali (molte email non riportano la città). Robusto: si ferma se
+  LinkedIn blocca. Attivo di default (`ENABLE_LINKEDIN_ENRICH`).
+- **Fallback modello Gemini**: la quota gratuita è **separata per modello**. Se il primario
+  (`gemini-2.5-flash-lite`) esaurisce (429), lo scorer passa automaticamente a
+  `GEMINI_FALLBACK_MODEL` (default `gemini-2.5-flash`) per il resto del ciclo.
+
+---
+
 ## Criteri di accettazione (checklist)
 
 - [x] Un nuovo utente col solo link si registra, collega Gmail e Telegram e imposta
@@ -140,3 +177,5 @@ ora fa solo `curl` verso l'endpoint. Nessuna logica applicativa nel YAML.
 - [x] Il ciclo parte ogni ora da GitHub Actions verso l'endpoint remoto.
 - [x] La dashboard mostra stato connessioni, criteri, job con breakdown punteggio, log.
 - [x] `companies.yaml` e `sources/company_scraper.py` restano nel repo, inutilizzati.
+- [x] Sessioni sicure (SESSION_SECRET forte) e pagina `/admin` protetta con `last_login`.
+- [x] Brand VeredAI su tutte le pagine (logo, palette verde, font). Live su veredai.onrender.com.
