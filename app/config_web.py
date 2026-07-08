@@ -46,12 +46,13 @@ RUN_CYCLE_TOKEN = _get("RUN_CYCLE_TOKEN", "dev-run-token")
 ADMIN_EMAIL = (_get("ADMIN_EMAIL", "niko.asti@gmail.com") or "").lower()
 
 # ------------------------------------------------------------------ Email (recupero password)
-# Invio via Gmail SMTP con "App Password" (gratuito, nessun servizio terzo).
-SMTP_HOST = _get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = _get_int("SMTP_PORT", 587)
-SMTP_USER = _get("SMTP_USER")           # es. niko.asti@gmail.com
-SMTP_PASSWORD = _get("SMTP_PASSWORD")   # App Password di Google (16 caratteri)
-SMTP_FROM = _get("SMTP_FROM", SMTP_USER or "")
+# Invio via Brevo (ex Sendinblue), API HTTPS — gratis 300 email/giorno, nessuna
+# carta richiesta. SMTP diretto (es. Gmail) NON funziona da Render free tier:
+# la porta 587 in uscita è bloccata/instabile (verificato: fallimenti intermittenti
+# e timeout). L'API HTTPS usa la porta 443, sempre aperta.
+BREVO_API_KEY = _get("BREVO_API_KEY")
+BREVO_SENDER_EMAIL = _get("BREVO_SENDER_EMAIL", "niko.asti@gmail.com")
+BREVO_SENDER_NAME = _get("BREVO_SENDER_NAME", "VeredAI")
 PASSWORD_RESET_TTL_MINUTES = _get_int("PASSWORD_RESET_TTL_MINUTES", 60)
 
 # ------------------------------------------------------------------ URL pubblico

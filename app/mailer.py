@@ -1,75 +1,30 @@
 """
-app/mailer.py — Invio email transazionali via Gmail SMTP (gratuito).
+app/mailer.py — Invio email transazionali via Brevo (ex Sendinblue), API HTTPS.
 
-Usato per il recupero password. Serve una "App Password" di Google (non la
-password normale dell'account): si genera da myaccount.google.com/apppasswords
-con la verifica in due passaggi attiva. Vedi README_PLATFORM.md.
+Usato per il recupero password. Gratis (300 email/giorno), nessuna carta
+richiesta: serve solo un account Brevo con un "mittente" verificato (un click
+su un'email di conferma, non un intero dominio) e una API key.
 
-Se SMTP_USER/SMTP_PASSWORD non sono configurati (es. sviluppo locale), il link
-viene solo loggato/stampato invece di essere spedito, così si può testare il
-flusso senza credenziali email reali.
+Perché HTTPS e non SMTP diretto: SMTP (porta 587) da Render free tier è
+inaffidabile — verificato con fallimenti intermittenti ("Network is
+unreachable") e timeout totali. L'API di Brevo usa HTTPS (porta 443), la
+stessa che l'app già usa con successo per Telegram/Gemini/Google.
+
+Se BREVO_API_KEY non è configurata (es. sviluppo locale), il link viene solo
+loggato invece di essere spedito, così si può testare il flusso senza
+credenziali reali.
 """
 from __future__ import annotations
 
 import logging
-import smtplib
-import socket
-import time
-from email.mime.text import MIMEText
+
+import requests
 
 from app import config_web
 
 log = logging.getLogger("app.mailer")
 
-
-def _smtp_connect() -> smtplib.SMTP:
-    """
-    Connette a SMTP_HOST forzando IPv4. Gmail risponde da un POOL di indirizzi
-    IP diversi (round-robin DNS): dalla rete di Render alcuni sono raggiungibili,
-    altri no ("Network is unreachable"), e cambia ad ogni chiamata. Si prova
-    ogni IPv4 risolto finché uno funziona, anziché fermarsi al primo.
-    L'hostname originale (self._host) è preservato per la verifica TLS (SNI).
-    """
-    host, port = config_web.SMTP_HOST, config_web.SMTP_PORT
-    last_exc: Exception | None = None
-    try:
-        addrs = [info[4][0] for info in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)]
-    except OSError as exc:
-        addrs = []
-        last_exc = exc
-
-    for ip in addrs:
-        try:
-            server = smtplib.SMTP(timeout=15)
-            server.connect(ip, port)
-            server._host = host  # ripristina l'hostname per la verifica TLS in starttls()
-            return server
-        except OSError as exc:
-            last_exc = exc
-            log.debug("SMTP connect fallito verso IP %s: %s", ip, exc)
-            continue
-
-    if not addrs:
-        # DNS non risolto: ultimo tentativo lasciando decidere al sistema.
-        server = smtplib.SMTP(timeout=15)
-        server.connect(host, port)
-        return server
-
-    raise last_exc or OSError("Nessun IP SMTP raggiungibile")
-
-
-def _smtp_connect_with_retry(attempts: int = 3, delay: float = 2.0) -> smtplib.SMTP:
-    """Ritenta l'intero pool di IP più volte: il problema è intermittente."""
-    last_exc: Exception | None = None
-    for i in range(1, attempts + 1):
-        try:
-            return _smtp_connect()
-        except OSError as exc:
-            last_exc = exc
-            log.warning("Tentativo connessione SMTP %s/%s fallito: %s", i, attempts, exc)
-            if i < attempts:
-                time.sleep(delay)
-    raise last_exc  # noqa: TRY201 — rilancia l'ultimo errore reale
+_BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 def send_email(to: str, subject: str, html_body: str) -> bool:
@@ -79,28 +34,32 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
 
 def send_email_diag(to: str, subject: str, html_body: str) -> tuple[bool, str]:
     """Come send_email, ma ritorna anche il dettaglio dell'esito (per diagnosi)."""
-    if not config_web.SMTP_USER or not config_web.SMTP_PASSWORD:
-        msg = "SMTP non configurato (SMTP_USER/SMTP_PASSWORD mancanti): email NON inviata (solo log)."
+    if not config_web.BREVO_API_KEY:
+        msg = "BREVO_API_KEY non configurata: email NON inviata (solo log)."
         log.warning("%s Destinatario=%s oggetto=%s", msg, to, subject)
         log.info("Contenuto email (dev fallback):\n%s", html_body)
         return False, msg
 
-    msg_obj = MIMEText(html_body, "html", "utf-8")
-    msg_obj["Subject"] = subject
-    msg_obj["From"] = config_web.SMTP_FROM or config_web.SMTP_USER
-    msg_obj["To"] = to
-
+    payload = {
+        "sender": {"name": config_web.BREVO_SENDER_NAME, "email": config_web.BREVO_SENDER_EMAIL},
+        "to": [{"email": to}],
+        "subject": subject,
+        "htmlContent": html_body,
+    }
+    headers = {
+        "api-key": config_web.BREVO_API_KEY,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
     try:
-        server = _smtp_connect_with_retry()
-        try:
-            server.starttls()
-            server.login(config_web.SMTP_USER, config_web.SMTP_PASSWORD)
-            server.sendmail(config_web.SMTP_FROM or config_web.SMTP_USER, [to], msg_obj.as_string())
-        finally:
-            server.quit()
-        log.info("Email inviata a %s: %s", to, subject)
-        return True, "inviata con successo (IPv4, con retry sul pool di IP)"
-    except (smtplib.SMTPException, OSError) as exc:
+        r = requests.post(_BREVO_API_URL, json=payload, headers=headers, timeout=20)
+        if r.status_code in (200, 201):
+            log.info("Email inviata a %s: %s", to, subject)
+            return True, "inviata con successo (Brevo API)"
+        detail = f"HTTP {r.status_code}: {r.text[:300]}"
+        log.error("Invio email fallito verso %s: %s", to, detail)
+        return False, detail
+    except requests.RequestException as exc:
         log.error("Invio email fallito verso %s: %s", to, exc)
         return False, f"{type(exc).__name__}: {exc}"
 
