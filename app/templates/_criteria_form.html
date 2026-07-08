@@ -10,15 +10,18 @@
   .chkgroup.scroll { max-height:200px; overflow:auto; }
   .chk { display:inline-flex; align-items:center; gap:8px; cursor:pointer;
          font-size:.9rem; user-select:none; min-width:130px; }
-  .chk input { position:absolute; opacity:0; width:0; height:0; }
-  .chk .box {
+  /* Checkbox nativa stilizzata (appearance:none): resta nel flusso, NON è un input
+     nascosto in posizione assoluta → niente salti di scroll su mobile al tap. */
+  .chk input {
+    appearance:none; -webkit-appearance:none; margin:0; flex:0 0 auto;
     width:18px; height:18px; border:2px solid var(--f-check,#475569); border-radius:5px;
-    display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+    background:var(--f-bg,#0b1220); position:relative; cursor:pointer;
     transition:background .15s, border-color .15s;
   }
-  .chk input:checked + .box { background:var(--accent,#38bdf8); border-color:var(--accent,#38bdf8); }
-  .chk input:checked + .box::after { content:"✕"; color:#fff; font-size:12px; font-weight:800; line-height:1; }
-  .chk input:focus-visible + .box { outline:2px solid var(--accent,#38bdf8); outline-offset:2px; }
+  .chk input:checked { background:var(--accent,#38bdf8); border-color:var(--accent,#38bdf8); }
+  .chk input:checked::after { content:"✕"; position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:800; line-height:1; }
+  .chk input:focus-visible { outline:2px solid var(--accent,#38bdf8); outline-offset:2px; }
   .chk-country { flex:1 1 100%; }
   .chk-country-label { font-size:.8rem; color:var(--f-muted,#94a3b8); margin:6px 0 4px; text-transform:uppercase; letter-spacing:.03em; }
   .chkgroup-inline { display:flex; flex-wrap:wrap; gap:8px 18px; }
@@ -37,7 +40,7 @@
       {% for lang in languages %}
         <label class="chk">
           <input type="checkbox" name="languages" value="{{ lang }}" {% if lang in sel_languages %}checked{% endif %}>
-          <span class="box"></span>{{ lang }}
+          {{ lang }}
         </label>
       {% endfor %}
     </div>
@@ -50,7 +53,7 @@
       {% for code, label in country_choices %}
         <label class="chk">
           <input type="checkbox" name="countries" value="{{ code }}" {% if code in sel_countries %}checked{% endif %}>
-          <span class="box"></span>{{ label }}
+          {{ label }}
         </label>
       {% endfor %}
     </div>
@@ -140,10 +143,7 @@
         input.name = 'cities';
         input.value = city.id;
         if (checkedCities.has(city.id)) input.checked = true;
-        const span = document.createElement('span');
-        span.className = 'box';
         label.appendChild(input);
-        label.appendChild(span);
         label.appendChild(document.createTextNode(' ' + city.label));
         inline.appendChild(label);
       });
@@ -154,7 +154,11 @@
   }
 
   countriesWrap.addEventListener('change', function (e) {
-    if (e.target && e.target.name === 'countries') rebuild();
+    if (e.target && e.target.name === 'countries') {
+      const y = window.scrollY;          // preserva la posizione di scroll
+      rebuild();
+      window.scrollTo(0, y);
+    }
   });
   rebuild(); // modalità modifica: mostra le città degli Stati già spuntati
 })();
