@@ -45,6 +45,15 @@ RUN_CYCLE_TOKEN = _get("RUN_CYCLE_TOKEN", "dev-run-token")
 # Email dell'amministratore: solo questo utente (loggato) può vedere /admin.
 ADMIN_EMAIL = (_get("ADMIN_EMAIL", "niko.asti@gmail.com") or "").lower()
 
+# ------------------------------------------------------------------ Email (recupero password)
+# Invio via Gmail SMTP con "App Password" (gratuito, nessun servizio terzo).
+SMTP_HOST = _get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = _get_int("SMTP_PORT", 587)
+SMTP_USER = _get("SMTP_USER")           # es. niko.asti@gmail.com
+SMTP_PASSWORD = _get("SMTP_PASSWORD")   # App Password di Google (16 caratteri)
+SMTP_FROM = _get("SMTP_FROM", SMTP_USER or "")
+PASSWORD_RESET_TTL_MINUTES = _get_int("PASSWORD_RESET_TTL_MINUTES", 60)
+
 # ------------------------------------------------------------------ URL pubblico
 # URL pubblico dell'app (assegnato da Render/Railway/Fly). Serve per il
 # redirect OAuth di Google e per il webhook Telegram. Niente slash finale.

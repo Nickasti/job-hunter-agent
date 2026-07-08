@@ -129,6 +129,19 @@ class UserMatch(Base):
     notificato_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class PasswordReset(Base):
+    """Token monouso per il recupero password (hash sha256, mai il token in chiaro)."""
+
+    __tablename__ = "password_resets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class RunLog(Base):
     """Log sintetico delle esecuzioni del ciclo (mostrato in dashboard)."""
 

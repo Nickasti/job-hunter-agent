@@ -11,10 +11,11 @@ Rotte principali:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -23,18 +24,20 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import config_web, crypto, geo, oauth_google, telegram_bot
+from app import config_web, crypto, geo, mailer, oauth_google, telegram_bot
 from app.auth import (
     authenticate,
     create_user,
     get_current_user,
     get_user_by_email,
+    hash_password,
     login_session,
     logout_session,
 )
 from app.cycle import run_cycle
 from app.db import get_session, init_db
 from app.models_db import (
+    PasswordReset,
     RunLog,
     User,
     UserCriteria,
@@ -167,6 +170,105 @@ def login(
 @app.post("/logout")
 def logout(request: Request):
     logout_session(request)
+    return _redirect("/login")
+
+
+# ============================================================ recupero password
+_RESET_GENERIC_MSG = (
+    "Se l'indirizzo esiste, ti abbiamo inviato un'email con le istruzioni per il reset."
+)
+
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_form(request: Request):
+    return templates.TemplateResponse(
+        request, "forgot_password.html", {"error": None, "sent": False}
+    )
+
+
+@app.post("/forgot-password")
+def forgot_password(
+    request: Request, email: str = Form(...), db: Session = Depends(get_session)
+):
+    user = get_user_by_email(db, email)
+    if user:
+        # Invalida eventuali token precedenti non usati: un solo link valido alla volta.
+        db.query(PasswordReset).filter(
+            PasswordReset.user_id == user.id, PasswordReset.used_at.is_(None)
+        ).delete()
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+        ttl = config_web.PASSWORD_RESET_TTL_MINUTES
+        db.add(
+            PasswordReset(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=ttl),
+            )
+        )
+        db.commit()
+
+        reset_url = f"{config_web.PUBLIC_BASE_URL}/reset-password?token={raw_token}"
+        mailer.send_email(
+            to=user.email,
+            subject="VeredAI — Reimposta la tua password",
+            html_body=mailer.build_reset_email(reset_url, ttl),
+        )
+    # Risposta identica esista o meno l'account: non riveliamo quali email sono registrate.
+    return templates.TemplateResponse(
+        request, "forgot_password.html", {"error": None, "sent": True}
+    )
+
+
+def _aware(dt: datetime) -> datetime:
+    """SQLite non conserva il fuso orario (ritorna datetime naive); Postgres sì.
+    Normalizza assumendo UTC, per confronti sicuri su entrambi i backend."""
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+def _find_valid_reset(db: Session, raw_token: str) -> PasswordReset | None:
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    pr = db.scalar(select(PasswordReset).where(PasswordReset.token_hash == token_hash))
+    if not pr or pr.used_at is not None:
+        return None
+    if _aware(pr.expires_at) < datetime.now(timezone.utc):
+        return None
+    return pr
+
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_form(request: Request, token: str = "", db: Session = Depends(get_session)):
+    valid = _find_valid_reset(db, token) is not None if token else False
+    return templates.TemplateResponse(
+        request, "reset_password.html", {"token": token, "valid": valid, "error": None}
+    )
+
+
+@app.post("/reset-password")
+def reset_password(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_session),
+):
+    pr = _find_valid_reset(db, token)
+    if not pr:
+        return templates.TemplateResponse(
+            request,
+            "reset_password.html",
+            {"token": token, "valid": False, "error": "Link non valido o scaduto."},
+        )
+    if len(password) < 8:
+        return templates.TemplateResponse(
+            request,
+            "reset_password.html",
+            {"token": token, "valid": True, "error": "Password troppo corta (min 8)."},
+        )
+    user = db.get(User, pr.user_id)
+    user.password_hash = hash_password(password)
+    pr.used_at = datetime.now(timezone.utc)
+    db.commit()
     return _redirect("/login")
 
 
