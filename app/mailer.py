@@ -13,11 +13,31 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import socket
 from email.mime.text import MIMEText
 
 from app import config_web
 
 log = logging.getLogger("app.mailer")
+
+
+def _smtp_connect() -> smtplib.SMTP:
+    """
+    Connette a SMTP_HOST forzando IPv4. Molti host cloud (Render incluso) hanno
+    l'uscita IPv6 rotta/instabile verso Gmail ("Network is unreachable"), mentre
+    l'IPv4 funziona regolarmente. Si risolve l'host in IPv4 e ci si connette
+    direttamente a quell'IP, ma si preserva l'hostname originale (self._host)
+    così la verifica del certificato TLS (SNI) resta corretta.
+    """
+    host, port = config_web.SMTP_HOST, config_web.SMTP_PORT
+    server = smtplib.SMTP(timeout=20)
+    try:
+        ipv4 = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)[0][4][0]
+        server.connect(ipv4, port)
+        server._host = host  # ripristina l'hostname per la verifica TLS in starttls()
+    except OSError:
+        server.connect(host, port)  # fallback: lascia decidere al sistema
+    return server
 
 
 def send_email(to: str, subject: str, html_body: str) -> bool:
@@ -39,12 +59,15 @@ def send_email_diag(to: str, subject: str, html_body: str) -> tuple[bool, str]:
     msg_obj["To"] = to
 
     try:
-        with smtplib.SMTP(config_web.SMTP_HOST, config_web.SMTP_PORT, timeout=20) as server:
+        server = _smtp_connect()
+        try:
             server.starttls()
             server.login(config_web.SMTP_USER, config_web.SMTP_PASSWORD)
             server.sendmail(config_web.SMTP_FROM or config_web.SMTP_USER, [to], msg_obj.as_string())
+        finally:
+            server.quit()
         log.info("Email inviata a %s: %s", to, subject)
-        return True, "inviata con successo"
+        return True, "inviata con successo (IPv4 forzato)"
     except (smtplib.SMTPException, OSError) as exc:
         log.error("Invio email fallito verso %s: %s", to, exc)
         return False, f"{type(exc).__name__}: {exc}"
