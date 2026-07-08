@@ -602,19 +602,17 @@ def api_run_cycle(authorization: str = Header(default="")):
 
 @app.post("/api/test-email")
 def api_test_email(to: str, authorization: str = Header(default="")):
-    """Diagnostica invio SMTP (bearer). Utile per verificare la config email."""
+    """Diagnostica invio email via Brevo (bearer). Utile per verificare la config."""
     _check_bearer(authorization)
-    smtp_configured = bool(config_web.SMTP_USER and config_web.SMTP_PASSWORD)
+    brevo_configured = bool(config_web.BREVO_API_KEY)
     ok, detail = mailer.send_email_diag(
         to, "VeredAI — Email di test", "<p>Email di prova dalla piattaforma VeredAI.</p>"
     )
     return {
         "ok": ok,
         "detail": detail,
-        "smtp_configured": smtp_configured,
-        "smtp_user": config_web.SMTP_USER,
-        "smtp_host": config_web.SMTP_HOST,
-        "smtp_port": config_web.SMTP_PORT,
+        "brevo_configured": brevo_configured,
+        "brevo_sender_email": config_web.BREVO_SENDER_EMAIL,
     }
 
 
