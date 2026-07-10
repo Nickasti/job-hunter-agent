@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
-from app import crypto
+from app import config_web, crypto, top_companies
 from app.db import session_scope
 from app.gmail_fetch import fetch_new_jobs
 from app.models_db import (
@@ -106,6 +106,8 @@ def run_cycle() -> dict:
             if criteria is None:
                 continue
             chat_id = user.telegram.chat_id if user.telegram else None
+            # Marcatura "azienda top": funzione riservata all'utente admin.
+            mark_top = user.email == config_web.ADMIN_EMAIL
             stats["users"] += 1
 
             # Job dell'utente ancora senza match (non valutati).
@@ -132,7 +134,14 @@ def run_cycle() -> dict:
                 stats["scored"] += 1
                 notified_at = None
                 if result["score"] >= (criteria.soglia_notifica or 55) and chat_id:
-                    if send_match(chat_id, result):
+                    top = (
+                        top_companies.match_top_company(
+                            job.company, job.title, job.description
+                        )
+                        if mark_top
+                        else None
+                    )
+                    if send_match(chat_id, result, top_company=top):
                         notified_at = datetime.now(timezone.utc)
                         stats["notified"] += 1
 

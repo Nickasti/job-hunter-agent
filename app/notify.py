@@ -20,7 +20,7 @@ def escape_md(text) -> str:
     return "".join(out)
 
 
-def build_message(result: dict) -> str:
+def build_message(result: dict, top_company: str | None = None) -> str:
     e = escape_md
     title = e(result.get("title", "Senza titolo"))
     score = e(str(result.get("score", "?")))
@@ -35,9 +35,20 @@ def build_message(result: dict) -> str:
     why = e(result.get("why_check") or "—")
     url = result.get("url") or ""
 
-    lines = [
+    # Marcatura vistosa se l'annuncio è di un'azienda "top" (banner + stelle + 🏆).
+    company_line = f"🏢 {company} {src}".rstrip()
+    lines: list[str] = []
+    if top_company:
+        lines += [
+            "⭐️⭐️⭐️ *AZIENDA TOP* ⭐️⭐️⭐️",
+            f"🏆 *{e(top_company)}*",
+            "▬▬▬▬▬▬▬▬▬▬▬▬▬",
+        ]
+        company_line = f"🏢 {company} 🏆🌟 {src}".rstrip()
+
+    lines += [
         f"🎯 *{title}* — Score: {score}/100",
-        f"🏢 {company} {src}".rstrip(),
+        company_line,
         f"📍 {location}",
         f"🗣 {language} • 📝 {contract} • ⏱ {duration}",
         f"💰 {salary}",
@@ -51,9 +62,11 @@ def build_message(result: dict) -> str:
     return "\n".join(lines)
 
 
-def send_match(chat_id: str, result: dict) -> bool:
+def send_match(chat_id: str, result: dict, top_company: str | None = None) -> bool:
     """Invia la notifica del match al chat Telegram dell'utente."""
-    return telegram_bot.send_message(chat_id, build_message(result), markdown=True)
+    return telegram_bot.send_message(
+        chat_id, build_message(result, top_company=top_company), markdown=True
+    )
 
 
 def send_plain(chat_id: str, text: str) -> bool:
