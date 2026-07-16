@@ -75,6 +75,8 @@
       <p class="muted">Serve a leggere i tuoi LinkedIn Job Alert. Non crei nessun progetto: usi il client della piattaforma.</p>
       {% if google_connected %}
         <span class="ok">✅ Google collegato</span>
+        <p class="muted">Se non ricevi più annunci, il collegamento potrebbe essere scaduto: ricollegalo.</p>
+        <a class="btn-dark" href="/auth/google/start">Ricollega Gmail</a>
       {% else %}
         <a class="btn-dark" href="/auth/google/start">Connetti Gmail</a>
       {% endif %}
