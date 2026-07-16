@@ -295,3 +295,142 @@
   location_filter: ["Lisbon", "Lisboa", "Portugal"]
   keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "estágio", "estagio"]
   verified: false
+
+# ---- Aggiunte 2026-07: aziende target mancanti (URL best-guess, DA VERIFICARE)
+# NOTA: location_filter include sia Portogallo sia Italia — restringi in base
+# a dove vuoi davvero candidarti per ciascuna azienda.
+
+- name: Meta
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.metacareers.com/jobs"
+  selector: "a[href*='/jobs/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Milan", "Milano", "Italy", "Italia", "Remote"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "university"]
+  verified: false
+
+- name: IBM
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.ibm.com/careers/search?field_keyword_18[0]=Intern"
+  selector: "a[href*='/job/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Milan", "Milano", "Italy", "Italia"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "stage"]
+  verified: false
+
+- name: ByteDance / TikTok
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://joinbytedance.com/search?keyword=&limit=10&job_category_id_list=&location_code_list="
+  selector: "a[href*='/search/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Milan", "Milano", "Italy", "Italia", "Dublin", "Remote"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate"]
+  verified: false
+
+- name: BCG
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.bcg.com/global/en/search-results"
+  selector: "a[href*='/job/']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Milan", "Milano", "Italy", "Italia"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "visiting", "stage"]
+  verified: false
+
+- name: Bain & Company
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.bain.com/careers/find-a-role/"
+  selector: "a[href*='job']"
+  location_filter: ["Lisbon", "Lisboa", "Portugal", "Milan", "Milano", "Italy", "Italia"]
+  keyword_filter: ["intern", "internship", "trainee", "junior", "graduate", "associate consultant"]
+  verified: false
+
+- name: Intesa Sanpaolo
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://jobs.intesasanpaolo.com/search/?q="
+  selector: "a[href*='/job/']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Torino"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: EssilorLuxottica
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://jobs.essilorluxottica.com/search/?q="
+  selector: "a[href*='/job/']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: Eni / Plenitude
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.eni.com/en-IT/careers/job-opportunities.html"
+  selector: "a[href*='job']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Roma", "Rome"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: Leonardo
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.leonardocompany.com/en/careers/job-opportunities"
+  selector: "a[href*='job']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Roma", "Rome", "Genova"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: Synlab
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.synlab.com/"
+  selector: "a[href*='job']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Portugal"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: Bending Spoons
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://jobs.bendingspoons.com/"
+  selector: "a[href*='position'], a[href*='job']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Remote"]
+  keyword_filter: ["intern", "internship", "junior", "graduate", "new grad"]
+  verified: false
+
+- name: Jakala
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://careers.smartrecruiters.com/Jakala"
+  selector: "a[href*='smartrecruiters.com']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Roma"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: Alkemy
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://www.alkemy.com/en/careers/"
+  selector: "a[href*='job'], a[href*='career']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false
+
+- name: indigo.ai
+  enabled: true
+  strategy: dynamic
+  career_page_url: "https://indigo.ai/en/careers/"
+  selector: "a[href*='job'], a[href*='career'], a[href*='position']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia", "Remote"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate"]
+  verified: false
+
+- name: YellowTech
+  enabled: false   # URL career page da confermare prima di attivare
+  strategy: dynamic
+  career_page_url: "https://www.yellowtech.it/"
+  selector: "a[href*='job'], a[href*='career'], a[href*='lavora']"
+  location_filter: ["Milan", "Milano", "Italy", "Italia"]
+  keyword_filter: ["intern", "internship", "stage", "junior", "graduate", "tirocinio"]
+  verified: false

@@ -94,6 +94,8 @@ USER_AGENT = (
 HTTP_TIMEOUT = 25
 # Spaziatura minima tra richieste verso linkedin.com (ToS-friendly)
 LINKEDIN_REQUEST_INTERVAL = 5.0
+# Spaziatura minima tra due richieste browser allo STESSO dominio (Playwright).
+SCRAPE_MIN_INTERVAL = _get_float("SCRAPE_MIN_INTERVAL", 15.0)
 RESPECT_ROBOTS = True
 
 

@@ -26,10 +26,12 @@ from bs4 import BeautifulSoup
 
 import config
 from models import Job
+from sources.browser_scraper import HeadlessBrowser, JobTitleParser
 
 log = logging.getLogger("sources.scraper")
 
 _robots_cache: dict[str, robotparser.RobotFileParser] = {}
+_parser = JobTitleParser()
 
 
 # ----------------------------------------------------------------- entry point
@@ -42,26 +44,41 @@ def fetch_jobs(companies_path: str = None) -> list[Job]:
         log.error("companies.yaml non trovato: %s", companies_path)
         return []
 
+    enabled = [c for c in companies if c.get("enabled", True)]
+    needs_browser = config.ENABLE_PLAYWRIGHT and any(
+        (c.get("strategy") or "").lower() == "dynamic" for c in enabled
+    )
+
     all_jobs: list[Job] = []
-    for company in companies:
-        if not company.get("enabled", True):
-            continue
-        name = company.get("name", "?")
-        try:
-            jobs = _scrape_company(company)
-            log.info("[%s] %d job pertinenti", name, len(jobs))
-            all_jobs.extend(jobs)
-        except Exception as exc:  # noqa: BLE001 — isolamento per azienda
-            log.warning("[%s] scraping fallito: %s", name, exc)
+    browser: HeadlessBrowser | None = None
+    try:
+        if needs_browser:
+            try:
+                browser = HeadlessBrowser()
+                browser.start()
+            except RuntimeError as exc:
+                log.error("%s — le aziende 'dynamic' verranno saltate.", exc)
+                browser = None
+        for company in enabled:
+            name = company.get("name", "?")
+            try:
+                jobs = _scrape_company(company, browser)
+                log.info("[%s] %d job pertinenti", name, len(jobs))
+                all_jobs.extend(jobs)
+            except Exception as exc:  # noqa: BLE001 — isolamento per azienda
+                log.warning("[%s] scraping fallito: %s", name, exc)
+    finally:
+        if browser:
+            browser.close()
     return all_jobs
 
 
-def _scrape_company(company: dict) -> list[Job]:
+def _scrape_company(company: dict, browser: HeadlessBrowser | None = None) -> list[Job]:
     strategy = (company.get("strategy") or "static").lower()
     if strategy == "api":
         raw = _scrape_api(company)
     elif strategy == "dynamic":
-        raw = _scrape_dynamic(company)
+        raw = _scrape_dynamic(company, browser)
     else:
         raw = _scrape_static(company)
     return _postfilter(raw, company)
@@ -130,104 +147,36 @@ def _scrape_static(company: dict) -> list[Job]:
 
 
 # ---------------------------------------------------------------- dynamic (JS)
-def _scrape_dynamic(company: dict) -> list[Job]:
+def _scrape_dynamic(company: dict, browser: HeadlessBrowser | None) -> list[Job]:
     url = company.get("career_page_url")
     name = company.get("name", "?")
-    if not url or not _robots_ok(url):
+    if not url:
         return []
-    if not config.ENABLE_PLAYWRIGHT:
-        log.info("[%s] strategy=dynamic ma Playwright disabilitato; salto.", name)
+    if browser is None:
+        log.info("[%s] strategy=dynamic ma browser non disponibile; salto.", name)
         return []
-    html = _render_with_playwright(url, company)
+    html = browser.fetch(url, wait_selector=company.get("selector"))
     if not html:
         return []
     return _parse_listing_html(html, url, company)
 
 
-def _render_with_playwright(url: str, company: dict) -> str | None:
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        log.error("Playwright non installato (pip install playwright && playwright install chromium).")
-        return None
-
-    wait_selector = company.get("selector")
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page(user_agent=config.USER_AGENT)
-            page.goto(url, timeout=45000, wait_until="domcontentloaded")
-            try:
-                if wait_selector:
-                    page.wait_for_selector(wait_selector, timeout=15000)
-                else:
-                    page.wait_for_load_state("networkidle", timeout=15000)
-            except Exception:  # noqa: BLE001 — proseguiamo col DOM disponibile
-                pass
-            html = page.content()
-            browser.close()
-            return html
-    except Exception as exc:  # noqa: BLE001
-        log.warning("[%s] Playwright errore: %s", company.get("name"), exc)
-        return None
-
-
 # ------------------------------------------------------------------ HTML parser
 def _parse_listing_html(html: str, base_url: str, company: dict) -> list[Job]:
-    """
-    Parser generico: se è definito un `selector`, lo usa per individuare le
-    card dei job; altrimenti ripiega su tutti gli anchor con href "job-like".
-    """
-    soup = BeautifulSoup(html, "lxml")
+    """Delegato a JobTitleParser; qui solo la mappatura verso il modello Job."""
     name = company.get("name", "?")
-    selector = company.get("selector")
-    jobs: list[Job] = []
-    seen = set()
-
-    candidates = soup.select(selector) if selector else soup.find_all("a", href=True)
-
-    for el in candidates:
-        # L'elemento può essere l'anchor stesso o una card che lo contiene.
-        anchor = el if el.name == "a" and el.get("href") else el.find("a", href=True)
-        if not anchor:
-            continue
-        href = anchor.get("href", "")
-        if not _looks_like_job_link(href):
-            continue
-        full_url = urljoin(base_url, href)
-        if full_url in seen:
-            continue
-        seen.add(full_url)
-        title = _clean(el.get_text(" ")) if selector else _clean(anchor.get_text(" "))
-        if not title:
-            continue
-        jobs.append(
-            Job(
-                title=title[:200],
-                company=name,
-                location=_guess_location(el),
-                url=full_url,
-                description=title,  # arricchito a valle solo se necessario
-                source="scrape",
-            )
+    postings = _parser.extract(html, base_url, selector=company.get("selector"))
+    return [
+        Job(
+            title=p.title,
+            company=name,
+            location=p.location,
+            url=p.url,
+            description=p.title,  # arricchito a valle solo se necessario
+            source="scrape",
         )
-    return jobs
-
-
-def _looks_like_job_link(href: str) -> bool:
-    h = href.lower()
-    return any(
-        tok in h
-        for tok in ("/job", "/jobs/", "/careers/", "/vagas/", "/position", "/opening", "gh_jid", "/o/")
-    )
-
-
-def _guess_location(el) -> str:
-    text = _clean(el.get_text(" "))
-    for kw in ("Lisbon", "Lisboa", "Portugal", "Portugal (Remote)"):
-        if kw.lower() in text.lower():
-            return kw
-    return ""
+        for p in postings
+    ]
 
 
 # ------------------------------------------------------------------ post filter
