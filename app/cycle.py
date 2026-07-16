@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select
 
+import config
 from app import config_web, crypto, top_companies
 from app.db import session_scope
 from app.gmail_fetch import fetch_new_jobs
@@ -28,7 +29,7 @@ from app.models_db import (
     UserJob,
     UserMatch,
 )
-from app.notify import send_match
+from app.notify import send_match, send_plain
 from app.scoring_engine import CycleScorer, QuotaExhausted
 from models import Job
 
@@ -52,6 +53,13 @@ def run_cycle() -> dict:
     detail_lines: list[str] = []
 
     with session_scope() as db:
+        # Detail dell'ULTIMO ciclo: serve a non ripetere ogni ora l'avviso
+        # Telegram "Gmail scollegato" (lo mandiamo solo al primo fallimento).
+        last_run = db.scalars(
+            select(RunLog).order_by(RunLog.started_at.desc()).limit(1)
+        ).first()
+        last_detail = (last_run.detail or "") if last_run else ""
+
         # ------------------------------------------------ 1) FETCH per utente
         gtokens = db.scalars(select(UserGoogleToken)).all()
         for gt in gtokens:
@@ -63,7 +71,21 @@ def run_cycle() -> dict:
                 jobs, new_epoch = fetch_new_jobs(refresh, gt.last_gmail_epoch)
             except Exception as exc:  # noqa: BLE001 — isolamento per utente
                 log.warning("Fetch fallito per user %s: %s", user.id, exc)
-                detail_lines.append(f"user {user.id}: fetch error {exc}")
+                marker = f"user {user.id}: gmail_token_invalid"
+                if "invalid_grant" in str(exc):
+                    detail_lines.append(marker)
+                    # Avvisa l'utente UNA volta (non a ogni ciclo orario).
+                    chat_id = user.telegram.chat_id if user.telegram else None
+                    if chat_id and marker not in last_detail:
+                        send_plain(
+                            chat_id,
+                            "⚠️ VeredAI: il collegamento con Gmail è scaduto, quindi "
+                            "non ricevo più i tuoi annunci. Vai sulla dashboard "
+                            f"({config_web.PUBLIC_BASE_URL}/dashboard) e ricollega "
+                            "Gmail per riattivare le notifiche.",
+                        )
+                else:
+                    detail_lines.append(f"user {user.id}: fetch error {exc}")
                 continue
 
             existing = set(
@@ -94,6 +116,46 @@ def run_cycle() -> dict:
             db.flush()
             stats["fetched"] += added
             log.info("User %s: %d nuovi job", user.id, added)
+
+        # ---------------------------------- 1-bis) FETCH career page (Fonte 2)
+        # Lo scraping è GLOBALE (una sola passata browser per tutte le aziende
+        # di companies.yaml), poi i job vengono accreditati a ogni utente
+        # attivo con dedup via fingerprint — lo scoring resta per-utente.
+        if config.ENABLE_SCRAPING:
+            try:
+                from sources.company_scraper import fetch_jobs as fetch_company_jobs
+
+                scraped = fetch_company_jobs()
+                log.info("Scraping career page: %d job trovati", len(scraped))
+                active = db.scalars(select(User).where(User.is_active.is_(True))).all()
+                for user in active:
+                    existing = set(
+                        db.scalars(
+                            select(UserJob.fingerprint).where(UserJob.user_id == user.id)
+                        ).all()
+                    )
+                    for j in scraped:
+                        fp = j.fingerprint()
+                        if fp in existing:
+                            continue
+                        existing.add(fp)
+                        db.add(
+                            UserJob(
+                                user_id=user.id,
+                                fonte="scrape",
+                                url=j.url,
+                                titolo=j.title,
+                                azienda=j.company,
+                                location=j.location,
+                                testo_grezzo=j.description,
+                                fingerprint=fp,
+                            )
+                        )
+                        stats["fetched"] += 1
+                db.flush()
+            except Exception as exc:  # noqa: BLE001 — lo scraping non blocca il ciclo
+                log.warning("Scraping career page fallito: %s", exc)
+                detail_lines.append(f"scrape error: {exc}")
 
         # ------------------------------------------------ 2+3) SCORING + NOTIFICA
         scorer = CycleScorer()  # UNA istanza → budget/throttle GLOBALE
@@ -169,5 +231,6 @@ def run_cycle() -> dict:
             )
         )
 
+    stats["detail"] = "; ".join(detail_lines)[:2000]
     log.info("Ciclo completato: %s", stats)
     return stats
