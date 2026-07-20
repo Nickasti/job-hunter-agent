@@ -600,6 +600,70 @@ def api_run_cycle(authorization: str = Header(default="")):
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
 
 
+@app.get("/api/diag")
+def api_diag(authorization: str = Header(default=""), db: Session = Depends(get_session)):
+    """Diagnostica di sola lettura (bearer). Numeri reali per utente + ultimi run."""
+    _check_bearer(authorization)
+
+    def _count(model, **filt):
+        q = select(func.count()).select_from(model)
+        for k, v in filt.items():
+            q = q.where(getattr(model, k) == v)
+        return db.scalar(q) or 0
+
+    users_out = []
+    for u in db.scalars(select(User).order_by(User.id)).all():
+        gt = db.get(UserGoogleToken, u.id)
+        last_epoch = gt.last_gmail_epoch if gt else 0
+        # Distribuzione punteggi per capire se il problema è "0 job" o "tutti sotto soglia".
+        scores = db.scalars(select(UserMatch.score).where(UserMatch.user_id == u.id)).all()
+        soglia = u.criteria.soglia_notifica if u.criteria else 55
+        users_out.append({
+            "id": u.id,
+            "email": u.email,
+            "active": u.is_active,
+            "google": gt is not None,
+            "telegram_chat": bool(u.telegram and u.telegram.chat_id),
+            "soglia": soglia,
+            "jobs": _count(UserJob, user_id=u.id),
+            "jobs_gmail": db.scalar(
+                select(func.count()).select_from(UserJob)
+                .where(UserJob.user_id == u.id, UserJob.fonte == "gmail")
+            ) or 0,
+            "jobs_scrape": db.scalar(
+                select(func.count()).select_from(UserJob)
+                .where(UserJob.user_id == u.id, UserJob.fonte == "scrape")
+            ) or 0,
+            "matches": len(scores),
+            "score_max": max(scores) if scores else None,
+            "over_soglia": sum(1 for s in scores if s >= soglia),
+            "notified": db.scalar(
+                select(func.count()).select_from(UserMatch)
+                .where(UserMatch.user_id == u.id, UserMatch.notificato_at.isnot(None))
+            ) or 0,
+            "last_gmail_epoch": last_epoch,
+            "last_gmail_utc": (
+                datetime.fromtimestamp(last_epoch, tz=timezone.utc).isoformat()
+                if last_epoch else None
+            ),
+        })
+
+    runs = db.scalars(select(RunLog).order_by(RunLog.started_at.desc()).limit(8)).all()
+    runs_out = [
+        {
+            "at": r.started_at.isoformat() if r.started_at else None,
+            "ok": r.ok,
+            "users": r.users_processed,
+            "fetched": r.jobs_fetched,
+            "scored": r.jobs_scored,
+            "notified": r.notified,
+            "detail": r.detail,
+        }
+        for r in runs
+    ]
+    return {"users": users_out, "runs": runs_out}
+
+
 @app.post("/api/test-email")
 def api_test_email(to: str, authorization: str = Header(default="")):
     """Diagnostica invio email via Brevo (bearer). Utile per verificare la config."""
