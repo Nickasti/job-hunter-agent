@@ -18,6 +18,9 @@ from sources.gmail_source import _enrich, _extract_html, _parse_linkedin_email
 
 log = logging.getLogger("app.gmail_fetch")
 
+# Numero massimo di annunci arricchiti (pagina pubblica LinkedIn) per esecuzione.
+MAX_ENRICH_PER_RUN = 25
+
 
 def _query(after_epoch: int) -> str:
     senders = " OR ".join(f"from:{s}" for s in config_web.LINKEDIN_SENDERS)
@@ -63,9 +66,13 @@ def fetch_new_jobs(refresh_token: str, last_epoch: int) -> tuple[list[Job], int]
     jobs = _dedup(jobs)
     # Arricchimento: scarica la pagina pubblica dell'annuncio per recuperare
     # descrizione e LOCALITÀ reali (molte email non riportano la città).
+    # TETTO per run: ogni annuncio costa ~5s (rate limit anti-blocco LinkedIn);
+    # con un grande arretrato l'arricchimento di TUTTI stallerebbe il ciclo. Ne
+    # arricchiamo al massimo MAX_ENRICH_PER_RUN: gli altri entrano comunque (con
+    # dati più scarni) e lo scoring li valuta lo stesso; nulla va perso.
     if config_web.ENABLE_LINKEDIN_ENRICH and jobs:
         try:
-            _enrich(jobs)
+            _enrich(jobs[:MAX_ENRICH_PER_RUN])
         except Exception as exc:  # noqa: BLE001 — l'arricchimento non deve bloccare il ciclo
             log.warning("Enrichment fallito: %s", exc)
     return jobs, newest + 1

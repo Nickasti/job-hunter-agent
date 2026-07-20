@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -35,6 +36,11 @@ from models import Job
 
 log = logging.getLogger("app.cycle")
 
+# Lucchetto anti-concorrenza: il cron GitHub fa --retry e più trigger possono
+# sovrapporsi. Due cicli in parallelo rifanno lo stesso fetch e si scontrano sui
+# vincoli unici del DB (rollback a vicenda). Un ciclo alla volta per processo.
+_cycle_lock = threading.Lock()
+
 
 def _job_from_row(row: UserJob) -> Job:
     return Job(
@@ -48,6 +54,16 @@ def _job_from_row(row: UserJob) -> Job:
 
 
 def run_cycle() -> dict:
+    if not _cycle_lock.acquire(blocking=False):
+        log.info("Ciclo già in corso: salto questa esecuzione (anti-concorrenza).")
+        return {"skipped": "already_running"}
+    try:
+        return _run_cycle_locked()
+    finally:
+        _cycle_lock.release()
+
+
+def _run_cycle_locked() -> dict:
     stats = {"users": 0, "fetched": 0, "scored": 0, "notified": 0, "quota_stop": False}
     started = datetime.now(timezone.utc)
     detail_lines: list[str] = []
@@ -113,9 +129,12 @@ def run_cycle() -> dict:
                 )
                 added += 1
             gt.last_gmail_epoch = new_epoch
-            db.flush()
+            # COMMIT per-utente: job persistiti e watermark avanzato SUBITO. Così,
+            # se lo scoring (lungo) viene interrotto, l'arretrato Gmail non viene
+            # riscaricato al ciclo dopo — si drena invece di ripartire da zero.
+            db.commit()
             stats["fetched"] += added
-            log.info("User %s: %d nuovi job", user.id, added)
+            log.info("User %s: %d nuovi job (commit)", user.id, added)
 
         # ---------------------------------- 1-bis) FETCH career page (Fonte 2)
         # Lo scraping è GLOBALE (una sola passata browser per tutte le aziende
@@ -152,8 +171,9 @@ def run_cycle() -> dict:
                             )
                         )
                         stats["fetched"] += 1
-                db.flush()
+                db.commit()
             except Exception as exc:  # noqa: BLE001 — lo scraping non blocca il ciclo
+                db.rollback()
                 log.warning("Scraping career page fallito: %s", exc)
                 detail_lines.append(f"scrape error: {exc}")
 
@@ -216,7 +236,10 @@ def run_cycle() -> dict:
                         notificato_at=notified_at,
                     )
                 )
-                db.flush()
+                # COMMIT per-match: se ho già inviato la notifica Telegram, la
+                # marcatura "notificato" dev'essere durevole SUBITO, per non
+                # rischiare un doppio invio se il ciclo si interrompe più avanti.
+                db.commit()
 
         # ------------------------------------------------ log del ciclo
         db.add(
